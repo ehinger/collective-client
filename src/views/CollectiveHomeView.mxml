@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:mx="library://ns.adobe.com/flex/mx"
+		xmlns:mq="com.mapquest.tilemap.*"
+		actionBarVisible="false" tabBarVisible="false" title="HomeView" xmlns:mapquest="com.mapquest.*" viewActivate="view1_viewActivateHandler(event)">
+	
+
+	
+	<fx:Script>
+		<![CDATA[
+			import spark.events.ViewNavigatorEvent;
+			import com.mapquest.*;
+			import com.mapquest.tilemap.*;
+			
+			
+			protected function view1_viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.map.setCenter(new LatLng(-41.292304,174.783711));
+			}
+			
+			protected function image1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.map.setCenter(new LatLng(-41.292304,174.783711));
+			}
+			
+			protected function image2_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(user);
+			}
+			
+			protected function image3_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(trades);
+			}
+			
+			protected function image4_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(watchlist);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<mapquest:LatLng lat="-41.292304" lng="174.783711"/>
+	</fx:Declarations>
+	
+
+	<mq:TilemapComponent id="map" x="-1" y="0" key="Fmjtd%7Cluub2g62l1%2C7s%3Do5-9ualu6" zoom="15" width="100%" height="100%"/>
+	<s:Image x="44" y="10" source="assets/maps final page.png" click="image1_clickHandler(event)"/>
+	<s:Image x="224" y="10" source="assets/Untitled-1.png" click="image2_clickHandler(event)"/>
+	<s:Image x="404" y="10" source="assets/Untitled-12.png" click="image3_clickHandler(event)"/>
+	<s:Image x="588" y="10" source="assets/Untitled-123.png" click="image4_clickHandler(event)"/>
+
+</s:View>
