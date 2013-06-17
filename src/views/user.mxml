@@ -12,13 +12,13 @@
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-				navigator.replaceView(CollectiveHomeView);
+				navigator.replaceView(map);
 			}
 			
 			protected function image2_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-				navigator.replaceView(user);
+
 			}
 			
 			protected function image3_clickHandler(event:MouseEvent):void
@@ -32,10 +32,25 @@
 				// TODO Auto-generated method stub
 				navigator.replaceView(watchlist);
 			}
+			
+			protected function image5_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(Availible_items);
+			}
+			
 		]]>
 	</fx:Script>
-	<s:Image x="44" y="10" source="assets/maps final page.png" click="image1_clickHandler(event)"/>
-	<s:Image x="224" y="10" source="assets/Untitled-1.png" click="image2_clickHandler(event)"/>
-	<s:Image x="404" y="10" source="assets/Untitled-12.png" click="image3_clickHandler(event)"/>
-	<s:Image x="588" y="10" source="assets/Untitled-123.png" click="image4_clickHandler(event)"/>
+
+	<s:Image x="0" y="-240" width="320" source="assets/bg.png"/>
+	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
+	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
+			 source="assets/Untitled-2.png" smooth="true"/>
+	<s:Image x="80" y="0" width="74" height="76" click="image2_clickHandler(event)"
+			 source="assets/Untitled-23.png" smooth="true"/>
+	<s:Image x="155" y="-2" width="75" height="74" click="image3_clickHandler(event)"
+			 source="assets/Untitled-24.png" smooth="true"/>
+	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
+			 source="assets/Untitled-25.png" smooth="true"/>
+	
 </s:View>

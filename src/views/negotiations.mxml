@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
 		xmlns:s="library://ns.adobe.com/flex/spark"
-		actionBarVisible="false" tabBarVisible="false" title="trades">
+		actionBarVisible="false" tabBarVisible="false" title="negotiations">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
-		<s:Sequence id="grow" target="rec" duration="500">
-			<s:Resize heightTo="450"/>
-		</s:Sequence>
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
-			import spark.events.ViewNavigatorEvent;
-			import mx.graphics.IFill;
-			
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
@@ -28,7 +22,7 @@
 			protected function image3_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-
+				navigator.replaceView(trades);
 			}
 			
 			protected function image4_clickHandler(event:MouseEvent):void
@@ -36,11 +30,38 @@
 				// TODO Auto-generated method stub
 				navigator.replaceView(Availible_items);
 			}
-
+			
+			protected function image5_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				b.height=97;
+				b.width=299;
+				b.alpha=1;
+				a.width=0;
+				a.height=0
+				a.alpha=0;
+				a1.width=298;
+				a1.height=41;
+				a1.alpha=1;
+			}
+			
+			protected function a_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				b.height=0;
+				b.width=0;
+				b.alpha=0;
+				a.width=298;
+				a.height=41;
+				a.alpha=1;
+				a1.width=0;
+				a1.height=0;
+				a1.alpha=0;
+			}
 			
 		]]>
 	</fx:Script>
-	<s:Image x="0" y="-241" width="321" source="assets/bg.png"/>
+	<s:Image x="-1" y="-233" width="323" smooth="true" source="assets/bg.png"/>
 	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
 	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
 			 source="assets/Untitled-2.png" smooth="true"/>
@@ -51,6 +72,7 @@
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
 
-	
-
+	<s:Image id="a" x="12" y="419" width="298" height="41" alpha="1" source="assets/menu bar options.jpg" click="image5_clickHandler(event)"/>
+	<s:Image id="a1" x="12" y="419" width="298" height="41" alpha="0" source="assets/menu bar options.jpg" click="a_clickHandler(event)"/>
+	<s:Image id="b" x="11" y="322" width="299" height="97" alpha="0" source="assets/buttons.png"/>
 </s:View>

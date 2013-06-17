@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:mq="com.mapquest.tilemap.*"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:mapquest="com.mapquest.*"
+		actionBarVisible="false" tabBarVisible="false" title="map" 
+		viewActivate="view1_viewActivateHandler(event)" xmlns:overlays="com.mapquest.tilemap.overlays.*">
+	
+	<fx:Declarations>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import spark.events.ViewNavigatorEvent;
+			import com.mapquest.*;
+			import com.mapquest.tilemap.*;
+			import com.mapquest.tilemap.controls.shadymeadow.*;
+			import mx.controls.*;
+			import com.mapquest.tilemap.overlays.ImageOverlay;
+			import com.mapquest.tilemap.controls.inputdevice.*;
+			import flash.events.MouseEvent;
+			import flash.filters.DropShadowFilter;
+			
+			private var myOL:ImageOverlay;
+			
+			private function initOL():void {
+				//create the overlay
+				myOL = new ImageOverlay();
+				
+				//create a latlngcollection for the overlay's shapepts
+				var shapePts:LatLngCollection = new LatLngCollection();
+				var latLng1:LatLng = new LatLng(-41.292304,174.783711);
+				shapePts.add(latLng1);
+				var latLng2:LatLng = new LatLng(-41.293554,174.7854711);
+				shapePts.add(latLng2);
+				myOL.shapePoints = (shapePts);
+				
+				//set various overlay properties
+				myOL.imageURL = "assets/cir.png";
+				myOL.colorAlpha = 1;
+				
+				//add the overlay to the map
+				map1.addShape(myOL);
+				myOL.addEventListener(MouseEvent.CLICK,onOLMouseEvent);
+			}
+			
+			private function onOLMouseEvent(event:MouseEvent):void {
+				navigator.replaceView(Availible_items);
+			}
+			
+			protected function view1_viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.map1.setCenter(new LatLng(-41.292304,174.783711));
+				this.initOL();
+			}
+			
+			protected function image1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.map1.setCenter(new LatLng(-41.292304,174.783711));
+			}
+			
+			protected function image2_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(user);
+			}
+			
+			protected function image3_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(trades);
+			}
+			
+			protected function image4_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(Availible_items);
+			}
+		]]>
+	</fx:Script>
+	
+	
+	
+	
+	<mq:TilemapComponent id="map1" x="-1" y="-1" key="Fmjtd%7Cluub2g62l1%2C7s%3Do5-9ualu6" zoom="15" width="100%" height="100%"/>
+	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
+	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
+			 source="assets/Untitled-2.png" smooth="true"/>
+	<s:Image x="80" y="0" width="74" height="76" click="image2_clickHandler(event)"
+			 source="assets/Untitled-23.png" smooth="true"/>
+	<s:Image x="155" y="-2" width="75" height="74" click="image3_clickHandler(event)"
+			 source="assets/Untitled-24.png" smooth="true"/>
+	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
+			 source="assets/Untitled-25.png" smooth="true"/>
+
+
+</s:View>

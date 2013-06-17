@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		actionBarVisible="false" tabBarVisible="false" title="Availible_items">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			protected function image1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(map);
+			}
+			
+			protected function image2_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(user);
+			}
+			
+			protected function image3_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(trades);
+			}
+			
+			protected function image4_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+
+			}
+			
+			protected function image5_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				ye.height=167;
+				yer.height=0;
+				yer.width=0;
+				yer.alpha=0;
+				yerp.height=21;
+				yerp.width=71;
+				yerp.alpha=1;
+				pho2.y=247;
+				ye1.y=247;
+				yer1.y=247;
+				yerp1.y=247;
+			}
+			
+			protected function yerp_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				ye.height=67;
+				yer.height=21;
+				yer.width=71;
+				yer.alpha=1;
+				yerp.height=0;
+				yerp.width=0;
+				yerp.alpha=0;
+				pho2.y=147;
+				ye1.y=147;
+				yer1.y=147;
+				yerp1.y=147;
+			}
+			
+			protected function image6_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				ye1.height=167;
+				yer1.height=0;
+				yer1.width=0;
+				yer1.alpha=0;
+				yerp1.height=21;
+				yerp1.width=71;
+				yerp1.alpha=1;
+			}
+			
+			protected function yerp1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				ye1.height=67;
+				yer1.height=21;
+				yer1.width=71;
+				yer1.alpha=1;
+				yerp1.height=0;
+				yerp1.width=0;
+				yerp1.alpha=0;
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Image x="0" y="-240" width="320" source="assets/bg.png"/>
+	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
+	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
+			 source="assets/Untitled-2.png" smooth="true"/>
+	<s:Image x="80" y="0" width="74" height="76" click="image2_clickHandler(event)"
+			 source="assets/Untitled-23.png" smooth="true"/>
+	<s:Image x="155" y="-2" width="75" height="74" click="image3_clickHandler(event)"
+			 source="assets/Untitled-24.png" smooth="true"/>
+	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
+			 source="assets/Untitled-25.png" smooth="true"/>
+
+	<s:Rect id="ye" width="226" height="67" x="82" y="80">
+		<s:fill>
+			<s:SolidColor color="#3271c6"/>
+		</s:fill>
+	</s:Rect>
+	<s:Image id="yer" x="237" y="79" width="71" height="21" alpha="1" source="assets/trades page final(1).png" click="image5_clickHandler(event)"/>
+	<s:Image id="yerp" x="237" y="79" width="0" height="0" alpha="0" source="assets/trades page final(1).png" click="yerp_clickHandler(event)"/>
+	<s:Rect id="ye1" width="226" height="67" x="82" y="147">
+		<s:fill>
+			<s:SolidColor color="#3271c6"/>
+		</s:fill>
+	</s:Rect>
+	<s:Image id="yer1" x="237" y="148" width="73" height="21" alpha="1" source="assets/trades page final(1).png" click="image6_clickHandler(event)"/>
+	<s:Image id="yerp1" x="237" y="148" width="0" height="0" alpha="0" source="assets/trades page final(1).png" click="yerp1_clickHandler(event)"/>
+	<s:Image id="pho1" x="12" y="79" width="70" height="68" source="assets/pic.png"/>
+	<s:Image id="pho2" x="12" y="147" width="70" height="68" source="assets/pic2.png"/>
+	
+</s:View>
