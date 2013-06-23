@@ -131,7 +131,6 @@ package connectivity
 			var header:String = encoder.toString();
 			var credsHeader:URLRequestHeader = 
 				new URLRequestHeader("Authorization", "Basic " + header);
-			trace("auth header: " + header);
 			request.requestHeaders.push(credsHeader);
 			
 			// Dirty hack time!  Because this is a dirty language...   
@@ -142,25 +141,106 @@ package connectivity
 			// If any data actually needs to be posted, it needs to be set after this is called.
 		}
 		
+		/**
+		 * Provides a standard way to load a URLRequest.  This function will load the request
+		 * and callback with an appropriate Response containing the data from the server, converted
+		 * to a JSON object tree if applicable.  It also allows for onSuccess and onFailure event
+		 * hooks to be passed through.
+		 */
+		private static function loadRequest(request:URLRequest,
+											callback:Function, 
+											onSuccess:Function = null, 
+											onFailure:Function = null):void
+		{
+			var response:Response;
+			
+			// Construct URL loader 
+			var loader:URLLoader = new URLLoader();
+			loader.dataFormat = URLLoaderDataFormat.TEXT;
+			loader.addEventListener(Event.COMPLETE, completeHandler);
+			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+			
+			// Load the request
+			try {
+				// This loads the request asynchronously. Event functions will fire
+				// as appropriate.
+				trace("Loading request "+request.url);
+				loader.load(request);
+			} catch (error:Error) {
+				// The errors that can be thrown are not tied to the server's responses
+				// but are rather things like out of memory, syntax errors, etc. so we
+				// can consider these to be rare occurrences.
+				trace("Unable to load requested document.");
+				response = new Response(false, "Internal Error!");
+				callback(response);
+				return;
+			}
+
+			// Called when data is loaded successfully.
+			function completeHandler(event:Event):void {
+				var loader:URLLoader = URLLoader(event.target);
+				trace("completeHandler: " + loader.data);				
+				var data:Object = convertAnyJSON(loader.data);
+				
+				// Call onSuccess function
+				if (onSuccess != null)
+					onSuccess(data);
+				
+				// Callback function: pass response indicating success along with the data, if any.
+				if (callback != null)
+				{
+					response = new Response(true, data);
+					callback(response);
+				}
+			}
+			
+			// Called when an error occurs for some reason, including a bad status code.
+			// This event doesn't contain the status code for some messed up reason.
+			function ioErrorHandler(event:IOErrorEvent):void {				
+				var loader:URLLoader = URLLoader(event.target);
+				trace("ioErrorHandler: " + event + ", data: " + loader.data);
+				var data:Object = convertAnyJSON(loader.data);
+				
+				// Call onFailure function
+				if (onFailure != null)
+					onFailure(data);
+				
+				// Callback function: pass response indicating failure along with the data, if any.
+				if (callback != null)
+				{
+					response = new Response(false, data);
+					callback(response);
+				}
+			}
+		}
+		
 		// ========================================================================================
 		// PUBLIC FUNCTIONS FOR INTERACTION WITH SERVER
 		// ========================================================================================
 
 		/**
+		 * Gets the current user's userId.
+		 * Requires that authenticate() have been called at least once.
+		 */
+		public static function getUserId():String {
+			return userId;
+		}
+		
+		/**
 		 * Attempts to register a user with the server.  
 		 * 	firstName: 	The first name of the user
 		 * 	lastName: 	The last name of the user
-		 * 	lat: 		The latitude of the user (must be valid)
-		 * 	lon: 		The longitude of the user (must be valid)
+		 * 	lat: 		The latitude of the user
+		 * 	lon: 		The longitude of the user
 		 * 	address:	The address of the user minus city and postcode
-		 * 	city:		The city of the user (must be valid)
-		 * 	postcode:	The postcode of the user (must be valid)
-		 * 	email:		The email of the user (must be valid)
+		 * 	city:		The city of the user 
+		 * 	postcode:	The postcode of the user 
+		 * 	email:		The email of the user
 		 * 	password:	The password of the user
 		 * 	callback:	The function to call when the attempt is complete.
 		 * 
 		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing user info.
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
 		 * FAILURE: Response will indicate failure and contain a message with the problem.
 		 */
 		public static function register(firstName:String, 
@@ -178,21 +258,15 @@ package connectivity
 			
 			// --- VALIDATION --------------------------------------------------------------------- 
 			
-			// Location:
-			if (isInvalidLocation(lat,lon))
-				response = new Response(false, "Invalid location.");			
-			// Email:
 			email = StringUtil.trim(email).toLowerCase();
-			if (isInvalidEmail(email))
-				response = new Response(false, "Invalid email.");			
-			// City:			
-			city = toTitleCase(StringUtil.trim(city));
-			if(isInvalidCity(city))
-				response = new Response(false, "Invalid city.");			
-			// Postcode:
 			postcode = StringUtil.trim(postcode);
-			if (isInvalidPostcode(postcode))
-				response = new Response(false, "Invalid postcode.");			
+			city = toTitleCase(StringUtil.trim(city));
+			
+			if (isInvalidLocation(lat,lon))	response = new Response(false, "Invalid location.");			
+			if (isInvalidEmail(email))		response = new Response(false, "Invalid email.");					
+			if (isInvalidCity(city))		response = new Response(false, "Invalid city.");			
+			if (isInvalidPostcode(postcode))response = new Response(false, "Invalid postcode.");	
+			
 			// Callback and abort if validation failed.
 			if (response != null && !response.isSuccess()) {
 				callback(response);
@@ -223,58 +297,15 @@ package connectivity
 			request.method = URLRequestMethod.POST;
 			request.data = body;
 			
-			// Construct URL loader 
-			var loader:URLLoader = new URLLoader();
-			loader.dataFormat = URLLoaderDataFormat.TEXT;
+			// Load request and callback.
+			loadRequest(request, callback, onSuccess);
 			
-			// Add listener functions for various URL events. 
-			loader.addEventListener(Event.COMPLETE, completeHandler);
-			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
-
-			// Load the request
-			try {
-				// This loads the request asynchronously. Event functions will fire
-				// as appropriate.
-				loader.load(request);
-			} catch (error:Error) {
-				// The errors that can be thrown are not tied to the server's responses
-				// but are rather things like out of memory, syntax errors, etc. so we
-				// can consider these to be rare occurrences.
-				trace("Unable to load requested document.");
-				response = new Response(false, "Internal Error!");
-				callback(response);
-				return;
-			}
-			
-			// --- EVENT HANDLING -----------------------------------------------------------------
-			// Annoyingly, these cannot be standardised at the top of this class as they must call
-			// the appropriate callback function, which can't be passed in as a parameter because
-			// the function is executed as part of an event.
-			
-			// Called when data is loaded successfully.
-			function completeHandler(event:Event):void {
-				var loader:URLLoader = URLLoader(event.target);
-				trace("register completeHandler: " + loader.data);				
-				var data:Object = convertAnyJSON(loader.data);
-				
+			// Handle events.
+			function onSuccess(data:Object):void {
 				// Save the user id for this session
 				ServerAccess.userId = data._id;
-				
-				// Callback function: pass response indicating success along with the data, if any.
-				response = new Response(true, data);
-				callback(response);
 			}
-			
-			// Called when an error occurs for some reason, including a bad status code.
-			// This event doesn't contain the status code for some messed up reason.
-			function ioErrorHandler(event:IOErrorEvent):void {				
-				var loader:URLLoader = URLLoader(event.target);
-				trace("register ioErrorHandler: " + event + ", data: " + loader.data);
-
-				// Callback function: pass response indicating failure along with the data, if any.
-				response = new Response(false, convertAnyJSON(loader.data));
-				callback(response);
-			}
+			function onFailure(data:Object):void {}
 		}
 		
 		/**
@@ -287,7 +318,7 @@ package connectivity
 		 * 	callback:	The function to call when the attempt is complete.
 		 * 
 		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing user info.
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
 		 * FAILURE: Response will indicate failure and contain a message with the problem.
 		 */
 		public static function authenticate(email:String, 
@@ -298,10 +329,10 @@ package connectivity
 			
 			// --- VALIDATION --------------------------------------------------------------------- 
 			
-			// Email:
 			email = StringUtil.trim(email).toLowerCase();
-			if (isInvalidEmail(email))
-				response = new Response(false, "Invalid email.");
+						
+			if (isInvalidEmail(email))		response = new Response(false, "Invalid email.");	
+			
 			// Callback and abort if validation failed.
 			if (response != null && !response.isSuccess()) {
 				callback(response);
@@ -314,45 +345,15 @@ package connectivity
 			var request:URLRequest = new URLRequest(hostname + "/authenticate");
 			addAuthenticationHeader(request, email, password); // Authentication required			
 			
-			// Construct URL loader 
-			var loader:URLLoader = new URLLoader();
-			loader.dataFormat = URLLoaderDataFormat.TEXT;
-			loader.addEventListener(Event.COMPLETE, completeHandler);
-			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+			// Load request and callback.
+			loadRequest(request, callback, onSuccess);
 			
-			// Load the request
-			try {
-				loader.load(request);
-			} catch (error:Error) {
-				trace("Unable to load requested document.");
-				response = new Response(false, "Internal Error!");
-				callback(response);
-				return;
-			}
-			
-			// --- EVENT HANDLING -----------------------------------------------------------------
-			
-			// Called when data is loaded successfully.
-			function completeHandler(event:Event):void {
-				var loader:URLLoader = URLLoader(event.target);
-				trace("authenticate completeHandler: " + loader.data);
-				var data:Object = convertAnyJSON(loader.data);
-				
-				// Save data
+			// Handle events.
+			function onSuccess(data:Object):void {
+				// Save user data
 				ServerAccess.userId = data._id;
 				ServerAccess.email = email;
 				ServerAccess.password = password;
-				
-				response = new Response(true, data);
-				callback(response);
-			}
-			
-			// Called when an error occurs for some reason, including a bad status code.
-			function ioErrorHandler(event:IOErrorEvent):void {				
-				var loader:URLLoader = URLLoader(event.target);
-				trace("authenticate ioErrorHandler: " + event + ", data: " + loader.data);
-				response = new Response(false, convertAnyJSON(loader.data));
-				callback(response);
 			}
 		}
 		
@@ -364,7 +365,7 @@ package connectivity
 		 * 	callback: 	The function to call when the attempt is complete.
 		 * 
 		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing user info.
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
 		 * FAILURE: Response will indicate failure and contain a message with the problem.
 		 */
 		public static function getProfile(userId:String, 
@@ -374,9 +375,9 @@ package connectivity
 			
 			// --- VALIDATION --------------------------------------------------------------------- 
 			
-			// UserID:
 			if(userId != null && userId.length == 0)
 				response = new Response(false, "Invalid user ID.");
+			
 			// Callback and abort if validation failed.
 			if (response != null && !response.isSuccess()) {
 				callback(response);
@@ -393,39 +394,8 @@ package connectivity
 			addAuthenticationHeader(request, null, null); // Assume cached info exists.	
 			request.contentType = "application/json";
 			
-			// Construct URL loader 
-			var loader:URLLoader = new URLLoader();
-			loader.dataFormat = URLLoaderDataFormat.TEXT;
-			loader.addEventListener(Event.COMPLETE, completeHandler);
-			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
-			
-			// Load the request
-			try {
-				loader.load(request);
-			} catch (error:Error) {
-				trace("Unable to load requested document.");
-				response = new Response(false, "Internal Error!");
-				callback(response);
-				return;
-			}
-			
-			// --- EVENT HANDLING -----------------------------------------------------------------
-			
-			// Called when data is loaded successfully.
-			function completeHandler(event:Event):void {
-				var loader:URLLoader = URLLoader(event.target);
-				trace("getProfile completeHandler: " + loader.data);
-				response = new Response(true, convertAnyJSON(loader.data));
-				callback(response);
-			}
-			
-			// Called when an error occurs for some reason, including a bad status code.
-			function ioErrorHandler(event:IOErrorEvent):void {				
-				var loader:URLLoader = URLLoader(event.target);
-				trace("getProfile ioErrorHandler: " + event + ", data: " + loader.data);
-				response = new Response(false, convertAnyJSON(loader.data));
-				callback(response);
-			}
+			// Load request and callback.
+			loadRequest(request, callback);
 		}
 		
 		/**
@@ -433,26 +403,24 @@ package connectivity
 		 * you can update specific parts of a user's profile without touching the rest.
 		 * Requires that authenticate() have been called at least once.
 		 * 
-		 * 	userId:		The user's id (optional, use null to use current user)
 		 * 	callback: 	The function to call when the attempt is complete.
 		 * 
 		 * Optional parameters to update: (Use 'null' if you don't want these to change, or NaN
 		 * 								   for lat / lon)		 
 		 * 	firstName: 	The first name of the user
 		 * 	lastName: 	The last name of the user
-		 * 	lat: 		The latitude of the user (must be valid)
-		 * 	lon: 		The longitude of the user (must be valid)
+		 * 	lat: 		The latitude of the user 
+		 * 	lon: 		The longitude of the user 
 		 * 	address:	The address of the user minus city and postcode
-		 * 	city:		The city of the user (must be valid)
-		 * 	postcode:	The postcode of the user (must be valid)
+		 * 	city:		The city of the user 
+		 * 	postcode:	The postcode of the user 
 		 * 	password:	The password of the user
 		 *   
 		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing user info.
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
 		 * FAILURE: Response will indicate failure and contain a message with the problem.
 		 */
-		public static function editProfile(userId:String, 
-										   firstName:String, 
+		public static function editProfile(firstName:String, 
 										   lastName:String, 
 										   lat:Number, 
 										   lon:Number, 
@@ -466,27 +434,20 @@ package connectivity
 			
 			// --- VALIDATION --------------------------------------------------------------------- 
 			
-			// UserID:
-			if(userId != null && userId.length == 0)
-				response = new Response(false, "Invalid user ID.");
-			// Location:
 			if (!isNaN(lat) && !isNaN(lon) && isInvalidLocation(lat,lon))
 				response = new Response(false, "Invalid location.");			
-			// Email:
 			if (email != null) 
 			{
 				email = StringUtil.trim(email).toLowerCase();
 				if (isInvalidEmail(email))
 					response = new Response(false, "Invalid email.");			
-			}
-			// City:	
+			}	
 			if (city != null)
 			{
 				city = toTitleCase(StringUtil.trim(city));
 				if(isInvalidCity(city))
 					response = new Response(false, "Invalid city.");			
 			}
-			// Postcode:
 			if (postcode != null) 
 			{
 				postcode = StringUtil.trim(postcode);
@@ -501,9 +462,6 @@ package connectivity
 			
 			// --- REQUEST ------------------------------------------------------------------------
 			
-			// Cached info
-			if (userId == null) 	userId = ServerAccess.userId;
-			
 			// Construct JSON body
 			var bodyObject:Object = new Object();
 			if (firstName != null)	bodyObject["firstName"] = firstName;
@@ -514,168 +472,406 @@ package connectivity
 			if (city != null)		bodyObject["city"] = city;
 			if (postcode != null)	bodyObject["postcode"] = postcode;
 			if (password != null)	bodyObject["password"] = password;
-			
 			var body:String = JSON.stringify(bodyObject);
 			
 			// Construct URL request
 			var request:URLRequest = new URLRequest(hostname + "/updateProfile/"+userId);
 			addAuthenticationHeader(request, null, null); // Assume cached info exists.
-			request.contentType = "application/json";
 			request.data = body;
 			
-			// Construct URL loader 
-			var loader:URLLoader = new URLLoader();
-			loader.dataFormat = URLLoaderDataFormat.TEXT;
-			loader.addEventListener(Event.COMPLETE, completeHandler);
-			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+			// Load request and callback.
+			loadRequest(request, callback, onSuccess);
 			
-			// Load the request
-			try {
-				loader.load(request);
-			} catch (error:Error) {
-				trace("Unable to load requested document.");
-				response = new Response(false, "Internal Error!");
+			// Handle events.
+			function onSuccess(data:Object):void {
+				// Save user data
+				if (email != null) 		ServerAccess.email = email;
+				if (password != null) 	ServerAccess.password = password;
+			}
+		}
+		
+		/**
+		 * Attempts to add a score and review from you to the user with the given userId 
+		 * regarding the given trade.  The score must be from 0 to 5.
+		 * Requires that authenticate() have been called at least once.
+		 * 
+		 * 	userId:		The user's id to add the review to
+		 *  tradeId:	The trade the review is in regards to
+		 * 	score:		The score to give the user
+		 * 	message:	The message body of the review
+		 * 	callback: 	The function to call when the attempt is complete
+		 *   
+		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
+		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 */
+		public static function addReview(userId:String, 
+										 tradeId:String, 
+										 score:Number,
+										 message:String,
+										 callback:Function):void 
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if(userId == null || userId.length == 0)
+				response = new Response(false, "Invalid user ID.");		
+			if(tradeId == null || tradeId.length == 0)
+				response = new Response(false, "Invalid trade ID.");	
+			if(isNaN(score) || score < 0 || score > 5)
+				response = new Response(false, "Invalid score (must be 0-5).");
+			if(message == null || message.length == 0)
+				response = new Response(false, "Invalid message.");			
+
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
 				callback(response);
 				return;
 			}
 			
-			// --- EVENT HANDLING -----------------------------------------------------------------
+			// --- REQUEST ------------------------------------------------------------------------
+						
+			// Construct JSON body
+			var bodyObject:Object = {
+				score:score,
+				message:message
+			};
+			var body:String = JSON.stringify(bodyObject);
 			
-			// Called when data is loaded successfully.
-			function completeHandler(event:Event):void {
-				var loader:URLLoader = URLLoader(event.target);
-				trace("editprofile completeHandler: " + loader.data);
-
-				// Save data
-				if (email != null) 		ServerAccess.email = email;
-				if (password != null) 	ServerAccess.password = password;
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/users/"+userId+"/trades/"+tradeId+"/reviews");
+			addAuthenticationHeader(request, null, null); // Assume cached info exists.
+			request.data = body;
+			
+			// Load request and callback.
+			loadRequest(request, callback);
+		}
+		
+		/**
+		 * Attempts to add a resource for the currently authenticated user.
+		 * Requires that authenticate() have been called at least once.
+		 * 
+		 * 	type:		The type of resource
+		 * 	lat: 		The latitude of the user
+		 * 	lon: 		The longitude of the user
+		 * 	title:		The title of the resource
+		 * 	description:The description of the resource
+		 * 	points:		The number of points to award 
+		 * 	callback: 	The function to call when the attempt is complete
+		 *   
+		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
+		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 */
+		public static function addResource(type:String, 
+										   lat:Number,
+										   lon:Number,
+										   title:String,
+										   description:String,
+										   points:Number,
+										   callback:Function):void 
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
 				
-				// Callback function: pass response indicating success along with the data, if any.
-				response = new Response(true, convertAnyJSON(loader.data));
+			if (type == null || type.length == 0)
+				response = new Response(false, "Invalid type.");	
+			if (isInvalidLocation(lat,lon))	response = new Response(false, "Invalid location.");
+			if (description == null || description.length == 0)
+				response = new Response(false, "Invalid description.");	
+			if (title == null || title.length == 0)
+				response = new Response(false, "Invalid title.");
+			if (description == null || description.length == 0)
+				response = new Response(false, "Invalid description.");
+			if (isNaN(points))
+				response = new Response(false, "Invalid point amount.");
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
 				callback(response);
+				return;
 			}
 			
-			// Called when an error occurs for some reason, including a bad status code.
-			function ioErrorHandler(event:IOErrorEvent):void {				
-				var loader:URLLoader = URLLoader(event.target);
-				trace("editprofile ioErrorHandler: " + event + ", data: " + loader.data);
-
-				// Callback function: pass response indicating failure along with the data, if any.
-				response = new Response(false, convertAnyJSON(loader.data));
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Construct JSON body
+			var bodyObject:Object = {
+				type:type,
+				location:{
+					lat:lat, 
+					lon:lon
+				},
+				title:title,
+				description:description,
+				points:points
+			};
+			var body:String = JSON.stringify(bodyObject);
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/users/"+userId+"/addResource");
+			addAuthenticationHeader(request, null, null);
+			request.data = body;
+			
+			// Load request and callback.
+			loadRequest(request, callback);
+		}
+	
+		/**
+		 * Attempts to get a resource by its resource id.
+		 * Requires that authenticate() have been called at least once.
+		 * 
+		 * 	resourceId:	The id of the resource to get
+		 * 	callback: 	The function to call when the attempt is complete
+		 *   
+		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
+		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 */
+		public static function getResource(resourceId:String,
+										   callback:Function):void 
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (resourceId == null || resourceId.length == 0)
+				response = new Response(false, "Invalid resource Id.");	
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
 				callback(response);
+				return;
 			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/getResource/"+resourceId);
+			addAuthenticationHeader(request, null, null);
+			
+			// Load request and callback.
+			loadRequest(request, callback);
 		}
 		
 		/**
-		 * Gets resources within radius metres of the given latitude+longitude. Can add filters.
+		 * Attempts to get all resources for a given user id.
+		 * Requires that authenticate() have been called at least once.
 		 * 
-		 * Returns an array of resource objects.
+		 * 	userId:		The id of the user to get the resources of
+		 * 	callback: 	The function to call when the attempt is complete
+		 *   
+		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
+		 * FAILURE: Response will indicate failure and contain a message with the problem.
 		 */
-		public static function getResourcesNearby(lat:Number, lng:Number, radius:int, filters:String):Object
+		public static function getResources(userId:String,
+										    callback:Function):void 
 		{
-			return null;
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (userId == null || userId.length == 0)
+				response = new Response(false, "Invalid resource Id.");	
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/users/"+userId+"/getResources");
+			addAuthenticationHeader(request, null, null);
+			
+			// Load request and callback.
+			loadRequest(request, callback);
 		}
 		
 		/**
-		 * Gets resources offered by the given user.
+		 * Attempts to get all resources within a given radius of a given set of coordinates.
+		 * May optionally be filtered by type or search term.
+		 * Requires that authenticate() have been called at least once.
 		 * 
-		 * Returns an array of resource objects.
+		 * 	lat: 			The latitude of the coordinates
+		 * 	lon: 			The longitude of the coordinates
+		 * 	radius:			The radius with which to search resources around the coordinates
+		 * 	filterTypes:	[Optional] An array of strings containing valid resource types to 
+		 * 					retrieve. Pass null to not filter by type.
+		 * 	searchTerm:		[Optional] A search string to search titles by.
+		 * 	callback: 		The function to call when the attempt is complete
+		 *   
+		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
+		 * FAILURE: Response will indicate failure and contain a message with the problem.
 		 */
-		public static function getResourcesOfferedBy(userId:String):Object
+		public static function getResourceLocations(lat:Number,
+													lon:Number,
+													radius:int,
+													filterTypes:Array = null,
+													searchTerm:String = null,
+													callback:Function = null):void 
 		{
-			return null;
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (isInvalidLocation(lat,lon))	response = new Response(false, "Invalid location.");
+			if (isNaN(radius))				response = new Response(false, "Invalid radius.");
+			if (filterTypes != null && filterTypes.length >= 0 && !filterTypes[0] is String)
+				response = new Response(false, "Invalid filter type (must be array of strings).");	
+			if (searchTerm != null && searchTerm.length == 0)
+				response = new Response(false, "Invalid search term.");	
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Create URL variables -- this allows our fields to be placed as objects and then 
+			// sexily placed in our request's data.
+			// However, since we're doing a POST, we have to manually toString() it and put it onto
+			// the end of the url.
+			var vars:URLVariables = new URLVariables();
+			vars.lat = lat;
+			vars.lon = lon;
+			vars.radius = radius;
+			if (filterTypes != null) 
+				vars.filter = filterTypes;
+			if (searchTerm != null)
+				vars.searchterm = searchTerm;
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/getResourceLocations?"+vars.toString());
+			addAuthenticationHeader(request, null, null);
+			request.contentType = "application/x-www-form-urlencoded";
+			
+			// Load request and callback.
+			loadRequest(request, callback);
 		}
 		
 		/**
-		 * Gets the resource with the given id.
+		 * Attempts to edit a resource for the currently authenticated user.
+		 * Requires that authenticate() have been called at least once.
 		 * 
-		 * Returns a resource object.
+		 * 	resourceId:	The id of the resource to edit
+		 * 	callback: 	The function to call when the attempt is complete
+		 * 
+		 * Optional parameters to update: (Use 'null' if you don't want these to change, or NaN
+		 * 								   for lat / lon)		
+		 * 	type:		The type of resource
+		 * 	lat: 		The latitude of the user
+		 * 	lon: 		The longitude of the user
+		 * 	title:		The title of the resource
+		 * 	description:The description of the resource
+		 * 	points:		The number of points to award 
+		 *   
+		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
+		 * FAILURE: Response will indicate failure and contain a message with the problem.
 		 */
-		public static function getResource(resourceId:String):Object
+		public static function editResource(resourceId:String,
+											type:String, 
+										    lat:Number,
+										    lon:Number,
+										    title:String,
+										    description:String,
+										    points:Number,
+										    callback:Function):void 
 		{
-			return null;
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (resourceId == null || resourceId.length == 0)
+				response = new Response(false, "Invalid resource Id.");	
+			if (type != null && type.length == 0)
+				response = new Response(false, "Invalid type.");	
+			if (!isNaN(lat) && !isNaN(lon) && isInvalidLocation(lat,lon))
+				response = new Response(false, "Invalid location.");		
+			if (description != null && description.length == 0)
+				response = new Response(false, "Invalid description.");	
+			if (title != null && title.length == 0)
+				response = new Response(false, "Invalid title.");
+			if (description != null && description.length == 0)
+				response = new Response(false, "Invalid description.");
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Construct JSON body
+			var bodyObject:Object = new Object();
+			if (type != null)			bodyObject["type"] = type;
+			if (!isNaN(lat) && !isNaN(lon))				
+										bodyObject["location"] = { lat:lat, lon:lon };
+			if (title != null)			bodyObject["title"] = title;
+			if (description != null)	bodyObject["description"] = description;
+			if (!isNaN(points))			bodyObject["points"] = points;
+			var body:String = JSON.stringify(bodyObject);
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/updateResource/"+resourceId);
+			addAuthenticationHeader(request, null, null);
+			request.data = body;
+			
+			// Load request and callback.
+			loadRequest(request, callback);
 		}
 		
 		/**
-		 * Adds a resource to the database with the given info.
+		 * Attempts to delete a resource by its resource id.
+		 * Requires that authenticate() have been called at least once.
+		 * 
+		 * 	resourceId:	The id of the resource to delete
+		 * 	callback: 	The function to call when the attempt is complete
+		 *   
+		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
+		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
+		 * FAILURE: Response will indicate failure and contain a message with the problem.
 		 */
-		public static function addResource(userId:String, resourceId:String, resourceType:String, lat:Number, lng:Number,
-										   title:String, description:String, 
-										   ownerId:String, firstName:String, lastName:String,
-										   points:int, wantedList:String, image:Object):Boolean
+		public static function deleteResource(resourceId:String,
+											  callback:Function):void 
 		{
-			return false;
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (resourceId == null || resourceId.length == 0)
+				response = new Response(false, "Invalid resource Id.");	
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/deleteResource/"+resourceId);
+			addAuthenticationHeader(request, null, null);
+			
+			// Load request and callback.
+			loadRequest(request, callback);
 		}
-		
-		/**
-		 * Edits an existing resource with the given id.  Any other non-null parameter will be sent through as an
-		 * change for the resource.
-		 */
-		public static function editResource(userId:String, resourceId:String, resourceType:String, lat:Number, lng:Number,
-										   title:String, description:String, 
-										   points:int, wantedList:String, image:Object):Boolean
-		{
-			return false;
-		}
-		
-		/**
-		 * Creates a trade with the given info.
-		 */
-		public static function createTrade(userId:String, resourceId:String, message:String, forPoints:Boolean):Object
-		{
-			return null;
-		}
-		
-		/**
-		 * Gets all trades associated with the given user.
-		 */
-		public static function getTrades(userId:String):Object
-		{
-			return null;
-		}
-		
-		/**
-		 * Actions a trade.
-		 * TODO: enum action
-		 */
-		public static function actionTrade(userId:String, tradeId:String, action:Object):Boolean
-		{
-			return false;
-		}
-		
-		/**
-		 * Actions a trade.
-		 * TODO: enum action
-		 */
-		/*public static function actionTrade(userId:String, tradeId:String, action:Object):Boolean
-		{
-			return false;
-		}*/
-		
-		/**
-		 * Gets available actions for a trade.
-		 * TODO: enum actions
-		 */
-		public static function getAvailableActions(userId:String, tradeId:String):Object
-		{
-			return false;
-		}
-		
-		/**
-		 * Posts a message on a trade
-		 */
-		public static function postMessage(userId:String, tradeId:String, message:String):Object
-		{
-			return null;
-		}
-		
-		/**
-		 * Gets available actions for a trade.
-		 * TODO: enum actions
-		 */
-		/*public static function getAvailableActions(userId:String, tradeId:Object):Object
-		{
-			return false;
-		}*/
 	}
 }
