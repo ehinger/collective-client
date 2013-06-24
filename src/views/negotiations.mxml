@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		actionBarVisible="false" tabBarVisible="false" title="negotiations">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import spark.components.Group;
+			import spark.components.Label;
+			import spark.components.TextInput;
+			protected function image1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(views.map);
+			}
+			
+			protected function image2_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(user);
+			}
+			
+			protected function image3_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(trades);
+			}
+			
+			protected function image4_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(Availible_items);
+			}
+		
+			protected var menuBar:Image;
+			protected var bgPopup:Image;
+			protected var button1:Image;
+			protected var button2:Image;
+			protected var button3:Image;
+			protected var button4:Image;
+			protected var message:TextInput;
+			protected var newMessage:Image;
+			protected var cancel:Image;
+			protected var profileImage:Image;
+			protected var messageBox:Label;
+			protected var barGroup:Group;
+			
+			protected function a_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.bgPopup = new Image;
+				this.button1 = new Image;
+				this.button2 = new Image;
+				this.button3 = new Image;
+				this.button4 = new Image;
+				this.barGroup = new Group;
+				bgPopup.source="assets/buttons.png";
+				button1.source="assets/menu bar options.jpg";
+				//button1.addEventListener(MouseEvent.CLICK, cancelButton);
+				button2.source="assets/menu bar options.jpg";
+				//button2.addEventListener(MouseEvent.CLICK, failed);
+				button3.source="assets/menu bar options.jpg";
+				//button3.addEventListener(MouseEvent.CLICK, complete);
+				button4.source="assets/menu bar options.jpg";
+				button4.addEventListener(MouseEvent.CLICK, addMessage);
+				newMessage.source="assets/b1.png";
+				cancel.source="assets/b2";
+				barGroup.addElement(bgPopup);
+				barGroup.addElement(button1);
+				barGroup.addElement(button2);
+				barGroup.addElement(button3);
+				barGroup.addElement(button4);
+				this.addElement(barGroup);
+			}
+			
+			protected function addMessage(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.message = new TextInput;
+				this.newMessage = new Image;
+				this.cancel = new Image;
+				newMessage.addEventListener(MouseEvent.CLICK, addingMessage);
+				barGroup.removeElement(button1, button2, button3, button4);
+				barGroup.addElement(
+			}
+			
+			protected function addingMessage(event:MouseEvent):void
+			{
+				
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Image x="-1" y="-233" width="323" smooth="true" source="assets/bg.png"/>
+	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
+	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
+			 source="assets/Untitled-2.png" smooth="true"/>
+	<s:Image x="80" y="0" width="74" height="76" click="image2_clickHandler(event)"
+			 source="assets/Untitled-23.png" smooth="true"/>
+	<s:Image x="155" y="-2" width="75" height="74" click="image3_clickHandler(event)"
+			 source="assets/Untitled-24.png" smooth="true"/>
+	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
+			 source="assets/Untitled-25.png" smooth="true"/>
+
+	<s:Image id="a" x="12" y="419" width="298" height="41" alpha="1" source="assets/menu bar options.jpg" click="a_clickHandler(event)"/>
+	<s:Image id="b" x="11" y="322" width="299" height="97" alpha="0" source="assets/buttons.png"/>
+	<s:VGroup y="80" id="f">
+		
+	</s:VGroup>
+</s:View>

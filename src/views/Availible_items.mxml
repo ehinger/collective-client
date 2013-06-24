@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:mq="com.mapquest.tilemap.*"
+		xmlns:mapquest="com.mapquest.*"
+		xmlns:overlays="com.mapquest.tilemap.overlays.*"
+		actionBarVisible="false" tabBarVisible="false" title="Availible_items">
+
+	
+	<s:states>
+		<s:State name="State1"/>
+		<s:State name="map"/>
+		<s:State name="add"/>
+		<s:State name="details"/>
+	</s:states>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.mapquest.*;
+			import com.mapquest.tilemap.*;
+			import com.mapquest.tilemap.controls.inputdevice.*;
+			import com.mapquest.tilemap.controls.shadymeadow.*;
+			import com.mapquest.tilemap.overlays.ImageOverlay;
+			import com.mapquest.tilemap.pois.*;
+			
+			import flash.events.MouseEvent;
+			import flash.filters.DropShadowFilter;
+			import flash.sampler.NewObjectSample;
+			
+			import mx.controls.*;
+			import mx.events.FlexEvent;
+			
+			import spark.events.ViewNavigatorEvent;
+			import spark.primitives.Rect;
+			
+			private var myPoi:Poi;
+			private var r:LatLng = new LatLng();
+			
+			protected var imi:ImageMapIcon = new ImageMapIcon();
+			
+			[Bindable]private var strInfo:String = " ";
+			
+			//[Embed(source="assets/qmark.png")]
+			
+			protected var base:Image;
+			protected var button:Image;
+			protected var itemTitle:Label;
+			protected var value:Label;
+			protected var group:Group;
+			protected var source:String;
+			
+			
+			private function onMapClick(e:MouseEvent):void {
+				//reset the info string
+				strInfo = "\n\n";
+				strInfo += "" + this.map1.pixToLL(new Point(this.map1.mouseX,this.map1.mouseY)).toString();
+				r = map1.tileMap.pixToLL(new Point(this.map1.mouseX,this.map1.mouseY));
+				this.imi.setImageURL("assets/cir.png", height = 15, width = 15);
+				this.myPoi = new Poi(r, imi);
+				this.map1.addShape(this.myPoi);
+			}
+			
+			protected function image1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(map);
+			}
+			
+			protected function image2_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(user);
+			}
+			
+			protected function image3_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(trades);
+			}
+			
+			protected function image4_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+				
+			}
+			
+			
+			protected function image5_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.setCurrentState("State1");
+				this.group = new Group;
+				this.base = new Image;
+				this.button = new Image;
+				this.itemTitle = new Label
+				this.value = new Label;
+				itemTitle.text=itemName.text;
+				itemTitle.y=7;
+				itemTitle.x=75;
+				value.text=itemValue.value + " pts";
+				value.y=7;
+				value.x=275;
+				button.source="assets/itembutton.png";
+				button.x=245;
+				button.y=25;
+				button.addEventListener(MouseEvent.CLICK, fcgngc);
+				base.y=0;
+				base.source=source;
+				base.width=320;
+				group.addElement(base);
+				group.addElement(button);
+				group.addElement(itemTitle);
+				group.addElement(value);
+				wrapper.addElement(group);
+			}
+			
+			protected function fcgngc(event:MouseEvent):void {
+				this.setCurrentState("add");
+			}
+			
+			protected function tools_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				tools.selected=true;
+				land.selected=false;
+				plants.selected=false;
+				time.selected=false;
+				source="assets/tools.png";				
+			}
+			
+			protected function land_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				land.selected=true;
+				tools.selected=false;
+				plants.selected=false;
+				time.selected=false;
+				source="assets/Untitled-2.jpg";
+			}
+			
+			protected function plants_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				plants.selected=true;
+				tools.selected=false;
+				land.selected=false;
+				time.selected=false;
+			}
+			
+			protected function time_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				time.selected=true;
+				tools.selected=false;
+				land.selected=false;
+				plants.selected=false;
+			}
+			
+			protected function image6_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.setCurrentState("details");
+				itemName.text="";
+				itemDescription.text="";
+				tools.selected=false;
+				land.selected=false;
+				plants.selected=false;
+				time.selected=false;
+			}
+			
+			protected function next_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.setCurrentState("map");
+				this.map1.setCenter(new LatLng(-41.292304,174.783711));
+				this.map1.addEventListener(MouseEvent.CLICK,onMapClick);
+			}
+			
+			protected function cancel_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.setCurrentState("State1");
+				
+			this.addElement(bar);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:Image includeIn="State1,add,details" x="0" y="-240" width="320" source="assets/bg.png"
+			 x.details="0" y.details="-260"/>
+	
+	<s:Group id="bar">
+		<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
+		<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
+				 source="assets/Untitled-2.png" smooth="true"/>
+		<s:Image x="80" y="0" width="74" height="76" click="image2_clickHandler(event)"
+				 source="assets/Untitled-23.png" smooth="true"/>
+		<s:Image x="155" y="-2" width="75" height="74" click="image3_clickHandler(event)"
+				 source="assets/Untitled-24.png" smooth="true"/>
+		<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
+				 source="assets/Untitled-25.png" smooth="true"/>
+	</s:Group>
+	
+
+		<s:VGroup id="wrapper" gap="0" y="80" includeIn="State1">
+		</s:VGroup>
+
+	
+	<mq:TilemapComponent id="map1" includeIn="map" x="-1" y="-1" key="Fmjtd%7Cluub2g62l1%2C7s%3Do5-9ualu6" zoom="15" width="320" height="480"/>
+	
+	<s:Image includeIn="map" x="-2" y="317" width="322" source="assets/mapcoord.png"/>
+	<s:Label id="lblInfo" includeIn="map" x="5" y="362" width="310" height="45"
+			 color="#4C3319" fontSize="10" text="{this.strInfo}" textAlign="center"/>
+	<s:Image includeIn="map" x="-4" y="387" width="325" source="assets/mapcoord1.png" click="image5_clickHandler(event)"/>
+	<s:CheckBox id="tools" includeIn="details" x="22" y="156" click="tools_clickHandler(event)"/>
+	<s:CheckBox id="land" includeIn="details" x="103" y="154" click="land_clickHandler(event)"/>
+	<s:CheckBox id="plants" includeIn="details" x="182" y="153" click="plants_clickHandler(event)"/>
+	<s:CheckBox id="time" includeIn="details" x="255" y="154" click="time_clickHandler(event)"/>
+	<s:Image includeIn="State1" x="-1" y="405" width="322" source="assets/new.png" click="image6_clickHandler(event)"/>
+	<s:TextInput id="itemName" includeIn="details" x="140" y="91" width="152"/>
+	<s:TextInput id="itemDescription" includeIn="details" x="20" y="295" width="268" height="87" enabled="true"
+				 textAlign="left"/>
+	<s:HSlider id="itemValue" includeIn="details" x="21" y="227" width="281" maximum="5" minimum="1"
+			   value="1"/>
+	<s:Image id="next" includeIn="details" x="21" y="375" width="100" smooth="true"
+			 source="assets/b1.png" click="next_clickHandler(event)"/>
+	<s:Image id="cancel" includeIn="details" x="188" y="375" width="100" smooth="true"
+			 source="assets/b2.png" click="cancel_clickHandler(event)"/>
+	
+
+
+	
+</s:View>
