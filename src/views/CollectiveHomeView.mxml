@@ -42,7 +42,7 @@
 				{
 					// Do successful operation stuffs.  use response.data to access returned data.
 					trace('success!  ');
-					navigator.replaceView(negotiations);
+					navigator.replaceView(map);
 					
 				}		
 				else

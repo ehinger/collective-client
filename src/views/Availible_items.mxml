@@ -46,8 +46,6 @@
 			
 			[Bindable]private var strInfo:String = " ";
 			
-			//[Embed(source="assets/qmark.png")]
-			
 			protected var base:Image;
 			protected var button:Image;
 			protected var itemTitle:Label;
@@ -68,7 +66,22 @@
 					
 					for (var resource:Object in response.getData()) 
 					{
-						resource.type
+						this.base = new Image;
+						this.group = new Group;
+						this.button = new Image;
+						this.itemTitle = new Label;
+						itemTitle.text=resource.title;
+						itemTitle.y=7;
+						itemTitle.x=75;
+						button.source="assets/itembutton.png";
+						button.x=245;
+						button.y=25;
+						button.addEventListener(MouseEvent.CLICK, detailButton);
+						base.source="assets/tools.png";
+						group.addElement(base);
+						group.addElement(button);
+						group.addElement(itemTitle);
+						wrapper.addElement(group);
 					}
 					
 				}		
@@ -120,7 +133,7 @@
 				this.group = new Group;
 				this.base = new Image;
 				this.button = new Image;
-				this.itemTitle = new Label
+				this.itemTitle = new Label;
 				this.value = new Label;
 				itemTitle.text=itemName.text;
 				itemTitle.y=7;
