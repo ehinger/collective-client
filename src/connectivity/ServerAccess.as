@@ -25,7 +25,16 @@ package connectivity
 		//tumblre update with my sheet
 		
 		// URL to server
-		private static const hostname:String = "https://nodejs-collective-server.herokuapp.com";
+		public static const hostname:String = "https://nodejs-collective-server.herokuapp.com";
+		
+		// Actions
+		public static const ACTION_ADD_MESSAGE:String = "add_message";
+		public static const ACTION_ACCEPT:String = "accept";
+		public static const ACTION_DECLINE:String = "decline";
+		public static const ACTION_CANCEL:String = "cancel";
+		public static const ACTION_MARK_AS_COMPLETE:String = "mark_as_complete";
+		public static const ACTION_AGREE:String = "agree";
+		public static const ACTION_DISAGREE:String = "disagree";
 		
 		// Cached session info
 		private static var userId:String;
@@ -228,20 +237,16 @@ package connectivity
 		
 		/**
 		 * Attempts to register a user with the server.  
-		 * 	firstName: 	The first name of the user
-		 * 	lastName: 	The last name of the user
-		 * 	lat: 		The latitude of the user
-		 * 	lon: 		The longitude of the user
-		 * 	address:	The address of the user minus city and postcode
-		 * 	city:		The city of the user 
-		 * 	postcode:	The postcode of the user 
-		 * 	email:		The email of the user
-		 * 	password:	The password of the user
-		 * 	callback:	The function to call when the attempt is complete.
-		 * 
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * 	@param	firstName 	The first name of the user
+		 * 	@param	lastName 	The last name of the user
+		 * 	@param	lat 		The latitude of the user
+		 * 	@param	lon 		The longitude of the user
+		 * 	@param	address		The address of the user minus city and postcode
+		 * 	@param	city		The city of the user 
+		 * 	@param	postcode	The postcode of the user 
+		 * 	@param	email		The email of the user
+		 * 	@param	password	The password of the user
+		 * 	@param	callback	The function to call when the attempt is complete.
 		 */
 		public static function register(firstName:String, 
 										lastName:String, 
@@ -313,13 +318,9 @@ package connectivity
 		 * the username and password will be stored and used with calls to other methods that
 		 * require authentication.
 		 * 
-		 * 	email: 		The user's email, will be converted to lower case
-		 * 	password:	The user's password 
-		 * 	callback:	The function to call when the attempt is complete.
-		 * 
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * 	@param	email 		The user's email, will be converted to lower case
+		 * 	@param	password	The user's password 
+		 * 	@param	callback	The function to call when the attempt is complete.
 		 */
 		public static function authenticate(email:String, 
 											password:String, 
@@ -359,14 +360,10 @@ package connectivity
 		
 		/**
 		 * Attempts to get a user's profile from the server.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 *  userId:		The user's id (optional, use null to use current user)
-		 * 	callback: 	The function to call when the attempt is complete.
-		 * 
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * @param userId	The user's id (optional, use null to use current user)
+		 * @param callback 	The function to call when the attempt is complete.
 		 */
 		public static function getProfile(userId:String, 
 										  callback:Function):void
@@ -401,24 +398,19 @@ package connectivity
 		/**
 		 * Attempts to edit a user profile's profile. Only supplied information is updated, so
 		 * you can update specific parts of a user's profile without touching the rest.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * 	callback: 	The function to call when the attempt is complete.
+		 * <p>For optional parameters: Use 'null' or 'NaN' if you don't want these to change		
 		 * 
-		 * Optional parameters to update: (Use 'null' if you don't want these to change, or NaN
-		 * 								   for lat / lon)		 
-		 * 	firstName: 	The first name of the user
-		 * 	lastName: 	The last name of the user
-		 * 	lat: 		The latitude of the user 
-		 * 	lon: 		The longitude of the user 
-		 * 	address:	The address of the user minus city and postcode
-		 * 	city:		The city of the user 
-		 * 	postcode:	The postcode of the user 
-		 * 	password:	The password of the user
-		 *   
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * @param callback 	The function to call when the attempt is complete.
+		 * @param firstName	[Optional] The first name of the user
+		 * @param lastName 	[Optional] The last name of the user
+		 * @param lat 		[Optional] The latitude of the user 
+		 * @param lon 		[Optional] The longitude of the user 
+		 * @param address	[Optional] The address of the user minus city and postcode
+		 * @param city		[Optional] The city of the user 
+		 * @param postcode	[Optional] The postcode of the user 
+		 * @param password	[Optional] The password of the user
 		 */
 		public static function editProfile(firstName:String, 
 										   lastName:String, 
@@ -493,17 +485,13 @@ package connectivity
 		/**
 		 * Attempts to add a score and review from you to the user with the given userId 
 		 * regarding the given trade.  The score must be from 0 to 5.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * 	userId:		The user's id to add the review to
-		 *  tradeId:	The trade the review is in regards to
-		 * 	score:		The score to give the user
-		 * 	message:	The message body of the review
-		 * 	callback: 	The function to call when the attempt is complete
-		 *   
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * @param userId	The user's id to add the review to
+		 * @param tradeId	The trade the review is in regards to
+		 * @param score		The score to give the user
+		 * @param message	The message body of the review
+		 * @param callback 	The function to call when the attempt is complete
 		 */
 		public static function addReview(userId:String, 
 										 tradeId:String, 
@@ -551,19 +539,15 @@ package connectivity
 		
 		/**
 		 * Attempts to add a resource for the currently authenticated user.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * 	type:		The type of resource
-		 * 	lat: 		The latitude of the user
-		 * 	lon: 		The longitude of the user
-		 * 	title:		The title of the resource
-		 * 	description:The description of the resource
-		 * 	points:		The number of points to award 
-		 * 	callback: 	The function to call when the attempt is complete
-		 *   
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * @param type			The type of resource
+		 * @param lat 			The latitude of the user
+		 * @param lon 			The longitude of the user
+		 * @param title			The title of the resource
+		 * @param description	The description of the resource
+		 * @param points		The number of points to award 
+		 * @param callback 		The function to call when the attempt is complete
 		 */
 		public static function addResource(type:String, 
 										   lat:Number,
@@ -622,14 +606,10 @@ package connectivity
 	
 		/**
 		 * Attempts to get a resource by its resource id.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * 	resourceId:	The id of the resource to get
-		 * 	callback: 	The function to call when the attempt is complete
-		 *   
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * @param resourceId	The id of the resource to get
+		 * @param callback 		The function to call when the attempt is complete
 		 */
 		public static function getResource(resourceId:String,
 										   callback:Function):void 
@@ -660,14 +640,10 @@ package connectivity
 		
 		/**
 		 * Attempts to get all resources for a given user id.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * 	userId:		The id of the user to get the resources of
-		 * 	callback: 	The function to call when the attempt is complete
-		 *   
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * @param userId	The id of the user to get the resources of
+		 * @param callback 	The function to call when the attempt is complete
 		 */
 		public static function getResources(userId:String,
 										    callback:Function):void 
@@ -699,19 +675,17 @@ package connectivity
 		/**
 		 * Attempts to get all resources within a given radius of a given set of coordinates.
 		 * May optionally be filtered by type or search term.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * 	lat: 			The latitude of the coordinates
-		 * 	lon: 			The longitude of the coordinates
-		 * 	radius:			The radius with which to search resources around the coordinates
-		 * 	filterTypes:	[Optional] An array of strings containing valid resource types to 
-		 * 					retrieve. Pass null to not filter by type.
-		 * 	searchTerm:		[Optional] A search string to search titles by.
-		 * 	callback: 		The function to call when the attempt is complete
-		 *   
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * <p>For optional parameters: Use 'null' if you don't want these to change		
+		 * 
+		 * @param lat 			The latitude of the coordinates
+		 * @param lon 			The longitude of the coordinates
+		 * @param radius		The radius with which to search resources around the coordinates
+		 * @param filterTypes	[Optional] An array of strings containing valid resource types to 
+		 * 						retrieve. 
+		 * @param searchTerm	[Optional] A search string to search titles by.
+		 * @param callback 		The function to call when the attempt is complete
 		 */
 		public static function getResourceLocations(lat:Number,
 													lon:Number,
@@ -764,23 +738,18 @@ package connectivity
 		
 		/**
 		 * Attempts to edit a resource for the currently authenticated user.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * 	resourceId:	The id of the resource to edit
-		 * 	callback: 	The function to call when the attempt is complete
+		 * <p>For optional parameters: Use 'null' or 'NaN' if you don't want these to change		
 		 * 
-		 * Optional parameters to update: (Use 'null' if you don't want these to change, or NaN
-		 * 								   for lat / lon)		
-		 * 	type:		The type of resource
-		 * 	lat: 		The latitude of the user
-		 * 	lon: 		The longitude of the user
-		 * 	title:		The title of the resource
-		 * 	description:The description of the resource
-		 * 	points:		The number of points to award 
-		 *   
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * @param resourceId:	The id of the resource to edit	
+		 * @param type			[Optional] The type of resource
+		 * @param lat 			[Optional] The latitude of the user
+		 * @param lon 			[Optional] The longitude of the user
+		 * @param title			[Optional] The title of the resource
+		 * @param description	[Optional] The description of the resource
+		 * @param points		[Optional] The number of points to award 
+		 * @param callback: 	The function to call when the attempt is complete
 		 */
 		public static function editResource(resourceId:String,
 											type:String, 
@@ -838,14 +807,10 @@ package connectivity
 		
 		/**
 		 * Attempts to delete a resource by its resource id.
-		 * Requires that authenticate() have been called at least once.
+		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * 	resourceId:	The id of the resource to delete
-		 * 	callback: 	The function to call when the attempt is complete
-		 *   
-		 * The 'callback' function will be called and passed a 'Response' object as its argument. 
-		 * SUCCESS: Response will indicate success and contain a JSON object containing info.
-		 * FAILURE: Response will indicate failure and contain a message with the problem.
+		 * @param resourceId	The id of the resource to delete
+		 * @param callback 		The function to call when the attempt is complete
 		 */
 		public static function deleteResource(resourceId:String,
 											  callback:Function):void 
@@ -869,6 +834,154 @@ package connectivity
 			var request:URLRequest = 
 				new URLRequest(hostname+"/deleteResource/"+resourceId);
 			addAuthenticationHeader(request, null, null);
+			
+			// Load request and callback.
+			loadRequest(request, callback);
+		}
+		
+		/**
+		 * Attempts to request a resource on behalf of the current user.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * <p>The returned object tree will contain all information on the trade, if successeful.
+		 * 
+		 * @param resourceId	The id of the resource to request
+		 * @param callback 		The function to call when the attempt is complete
+		 */
+		public static function addTrade(resourceId:String,
+										callback:Function):void 
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (resourceId == null || resourceId.length == 0)
+				response = new Response(false, "Invalid resource Id.");	
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/addTrade");
+			addAuthenticationHeader(request, null, null);
+			
+			// Construct JSON body
+			var bodyObject:Object = {
+				resourceId:resourceId
+			};
+			request.data = JSON.stringify(bodyObject);
+			
+			// Load request and callback.
+			loadRequest(request, callback);
+		}
+		
+		/**
+		 * Attempts to add a message to a trade for the current user.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * @param tradeId	The id of the trade
+		 * @param message	The message to add
+		 * @param callback 	The function to call when the attempt is complete
+		 */
+		public static function addMessage(tradeId:String,
+										  message:String,
+										  callback:Function):void 
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (tradeId == null || tradeId.length == 0)
+				response = new Response(false, "Invalid trade Id.");	
+			if (message == null || message.length == 0)
+				response = new Response(false, "Invalid message.");
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Create URL variables -- this allows our fields to be placed as objects and then 
+			// sexily placed in our request's data.
+			// However, since we're doing a POST, we have to manually toString() it and put it onto
+			// the end of the url.
+			var vars:URLVariables = new URLVariables();
+			vars.action = ACTION_ADD_MESSAGE;
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/trades/"+tradeId+"/Actions?"+vars.toString());
+			addAuthenticationHeader(request, null, null);
+			request.contentType = "application/x-www-form-urlencoded+json";
+			
+			// Construct JSON body
+			var bodyObject:Object = {
+				message:message
+			};
+			request.data = JSON.stringify(bodyObject);
+			
+			// Load request and callback.
+			loadRequest(request, callback);
+		}
+		
+		/**
+		 * Attempts to perform an action on a trade.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * @param tradeId	The id of the trade
+		 * @param action	The action to take - use Serveraccess.ACTION_*
+		 * @param callback 	The function to call when the attempt is complete
+		 */
+		public static function actionTrade(tradeId:String,
+										   action:String,
+										   callback:Function):void 
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (tradeId == null || tradeId.length == 0)
+				response = new Response(false, "Invalid trade Id.");
+			switch (action)
+			{
+				case ACTION_ACCEPT: break;
+				case ACTION_DECLINE: break;
+				case ACTION_AGREE: break;
+				case ACTION_DISAGREE: break;
+				case ACTION_MARK_AS_COMPLETE: break;
+				case ACTION_CANCEL: break;
+				default: response = new Response(false, "Invalid action.");
+			}
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Create URL variables -- this allows our fields to be placed as objects and then 
+			// sexily placed in our request's data.
+			// However, since we're doing a POST, we have to manually toString() it and put it onto
+			// the end of the url.
+			var vars:URLVariables = new URLVariables();
+			vars.action = action;
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/trades/"+tradeId+"/Actions?"+vars.toString());
+			addAuthenticationHeader(request, null, null);
+			request.contentType = "application/x-www-form-urlencoded";
 			
 			// Load request and callback.
 			loadRequest(request, callback);
