@@ -4,6 +4,7 @@
 		xmlns:mq="com.mapquest.tilemap.*"
 		xmlns:mapquest="com.mapquest.*"
 		xmlns:overlays="com.mapquest.tilemap.overlays.*"
+		creationComplete="onCC()"
 		actionBarVisible="false" tabBarVisible="false" title="Availible_items">
 
 	
@@ -25,6 +26,8 @@
 			import com.mapquest.tilemap.controls.shadymeadow.*;
 			import com.mapquest.tilemap.overlays.ImageOverlay;
 			import com.mapquest.tilemap.pois.*;
+			
+			import connectivity.*;
 			
 			import flash.events.MouseEvent;
 			import flash.filters.DropShadowFilter;
@@ -51,7 +54,29 @@
 			protected var value:Label;
 			protected var group:Group;
 			protected var source:String;
+			protected var type:String;
 			
+			protected function onCC():void {
+				ServerAccess.getResources(ServerAccess.getUserId(), storedItems);
+			}
+			
+			protected function storedItems(response:Response):void {
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
+					
+					for (var resource:Object in response.getData()) 
+					{
+						resource.type
+					}
+					
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+			}
 			
 			private function onMapClick(e:MouseEvent):void {
 				//reset the info string
@@ -106,7 +131,7 @@
 				button.source="assets/itembutton.png";
 				button.x=245;
 				button.y=25;
-				button.addEventListener(MouseEvent.CLICK, fcgngc);
+				button.addEventListener(MouseEvent.CLICK, detailButton);
 				base.y=0;
 				base.source=source;
 				base.width=320;
@@ -115,9 +140,23 @@
 				group.addElement(itemTitle);
 				group.addElement(value);
 				wrapper.addElement(group);
+				ServerAccess.addResource(type, r.lat, r.lng, itemName.text, "jioijjil", itemValue.value, onResourceAdded);
 			}
 			
-			protected function fcgngc(event:MouseEvent):void {
+			protected function onResourceAdded(response:Response):void {
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
+					
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+			}
+			
+			protected function detailButton(event:MouseEvent):void {
 				this.setCurrentState("add");
 			}
 			
@@ -128,7 +167,8 @@
 				land.selected=false;
 				plants.selected=false;
 				time.selected=false;
-				source="assets/tools.png";				
+				source="assets/tools.png";
+				type="tools";
 			}
 			
 			protected function land_clickHandler(event:MouseEvent):void

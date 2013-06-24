@@ -35,7 +35,6 @@
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
 				ServerAccess.authenticate(username.text,password.text,logIn);
-				navigator.replaceView(map);
 			}
 			
 			protected function logIn(response:Response):void {
@@ -43,6 +42,7 @@
 				{
 					// Do successful operation stuffs.  use response.data to access returned data.
 					trace('success!  ');
+					navigator.replaceView(negotiations);
 					
 				}		
 				else
@@ -57,8 +57,10 @@
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
 	<s:Image x="0" y="-251" width="320" smooth="true" source="assets/bg2.png"/>
-	<s:TextInput id="username" x="83" y="244" width="158" height="39" prompt="Username" textAlign="center"/>
-	<s:TextInput  id="password" x="84" y="300" width="156" height="39" prompt="Password" textAlign="center" displayAsPassword="true"/>
+	<s:TextInput id="username" x="83" y="244" width="158" height="39" prompt="Username"
+				 text="llamalovin@gmail.com" textAlign="center"/>
+	<s:TextInput id="password" x="84" y="300" width="156" height="39" displayAsPassword="true"
+				 prompt="Password" text="llama" textAlign="center"/>
 	<s:Image x="80" y="361" width="161" height="40" source="assets/login button.jpg" click="image1_clickHandler(event)"/>	
 
 

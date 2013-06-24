@@ -42,6 +42,12 @@
 	</fx:Script>
 
 	<s:Image x="0" y="-240" width="320" source="assets/bg.png"/>
+	<s:Rect x="147" y="118" width="116" height="25">
+		<s:fill>
+			<s:SolidColor color="#659e35"/>
+		</s:fill>
+	</s:Rect>
+	<s:Image x="0" y="-240" width="320" source="assets/bg3.png"/>
 	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
 	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
 			 source="assets/Untitled-2.png" smooth="true"/>
@@ -61,4 +67,6 @@
 			
 		</s:Group>
 	</s:Scroller>	
+
+	
 </s:View>
