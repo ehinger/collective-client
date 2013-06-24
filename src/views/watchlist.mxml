@@ -44,4 +44,16 @@
 			 source="assets/Untitled-24.png" smooth="true"/>
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
+<<<<<<< HEAD
+=======
+
+	<s:Image x="12" y="78" width="296" height="67" smooth="true"
+			 source="assets/watchlist page final1.jpg"/>
+	<s:Image x="12" y="145" width="296" height="69" smooth="true"
+			 source="assets/watchlist page final2.jpg"/>
+	<s:Image x="12" y="213" width="296" height="68" smooth="true" smoothingQuality="default"
+			 source="assets/watchlist page final3.jpg"/>
+	<s:Image x="12" y="280" width="296" height="68" smooth="true"
+			 source="assets/watchlist page final4.jpg"/>
+>>>>>>> cf918a2154fe5bb6b121a0593979f4bb4d2b2c52
 </s:View>

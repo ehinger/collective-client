@@ -4,9 +4,7 @@
 		xmlns:mx="library://ns.adobe.com/flex/mx"
 		xmlns:mq="com.mapquest.tilemap.*"
 		creationComplete="onCC()"
-		actionBarVisible="false" tabBarVisible="false" title="HomeView" xmlns:mapquest="com.mapquest.*" 
-
-		>
+		actionBarVisible="false" tabBarVisible="false" title="HomeView" xmlns:mapquest="com.mapquest.*" >
 
 	<fx:Script>
 		<![CDATA[
@@ -62,5 +60,6 @@
 	<s:TextInput id="username" x="83" y="244" width="158" height="39" prompt="Username" textAlign="center"/>
 	<s:TextInput  id="password" x="84" y="300" width="156" height="39" prompt="Password" textAlign="center" displayAsPassword="true"/>
 	<s:Image x="80" y="361" width="161" height="40" source="assets/login button.jpg" click="image1_clickHandler(event)"/>	
+
 
 </s:View>

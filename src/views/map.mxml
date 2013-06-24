@@ -10,26 +10,45 @@
 		<s:State name="State1"/>
 		<s:State name="itemplacement"/>
 	</s:states>
+
 	
 	<fx:Declarations>
 	</fx:Declarations>
 	
 	<fx:Script>
 		<![CDATA[
+			import spark.events.ViewNavigatorEvent;
 			import com.mapquest.*;
 			import com.mapquest.tilemap.*;
-			import com.mapquest.tilemap.controls.inputdevice.*;
 			import com.mapquest.tilemap.controls.shadymeadow.*;
+			import mx.controls.*;
 			import com.mapquest.tilemap.overlays.ImageOverlay;
-			import com.mapquest.tilemap.pois.*;
-			
+			import com.mapquest.tilemap.controls.inputdevice.*;
 			import flash.events.MouseEvent;
 			import flash.filters.DropShadowFilter;
 			
-			import mx.controls.*;
-			import mx.events.FlexEvent;
+			private var myOL:ImageOverlay;
 			
-			import spark.events.ViewNavigatorEvent;
+			private function initOL():void {
+				//create the overlay
+				myOL = new ImageOverlay();
+				
+				//create a latlngcollection for the overlay's shapepts
+				var shapePts:LatLngCollection = new LatLngCollection();
+				var latLng1:LatLng = new LatLng(-41.292304,174.783711);
+				shapePts.add(latLng1);
+				var latLng2:LatLng = new LatLng(-41.293554,174.7854711);
+				shapePts.add(latLng2);
+				myOL.shapePoints = (shapePts);
+				
+				//set various overlay properties
+				myOL.imageURL = "assets/cir.png";
+				myOL.colorAlpha = 1;
+				
+				//add the overlay to the map
+				map1.addShape(myOL);
+				myOL.addEventListener(MouseEvent.CLICK,onOLMouseEvent);
+			}
 			
 			private function onOLMouseEvent(event:MouseEvent):void {
 				navigator.replaceView(Availible_items);
@@ -45,7 +64,7 @@
 			{
 				// TODO Auto-generated method stub
 				this.map1.setCenter(new LatLng(-41.292304,174.783711));
-				this.setCurrentState("itemplacement");
+
 			}
 			
 			protected function image2_clickHandler(event:MouseEvent):void
@@ -65,13 +84,13 @@
 				// TODO Auto-generated method stub
 				navigator.replaceView(Availible_items);
 			}
+
 			
 			protected function qmark_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
 				navigator.replaceView(help);
 			}
-			
 		]]>
 	</fx:Script>
 	
@@ -89,7 +108,7 @@
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
 	<s:Image id="qmark" includeIn="State1" x="272" y="397" smooth="false" source="assets/qmark.png" click="qmark_clickHandler(event)"/>
-	
+
 
 
 </s:View>
