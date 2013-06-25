@@ -1,14 +1,22 @@
 package connectivity
 {
+	import com.adobe.images.PNGEncoder;
+	
+	import flash.display.Bitmap;
+	import flash.display.BitmapData;
+	import flash.display.PixelSnapping;
 	import flash.events.Event;
-	import flash.events.HTTPStatusEvent;
 	import flash.events.IOErrorEvent;
+	import flash.geom.Matrix;
+	import flash.geom.Point;
+	import flash.geom.Rectangle;
 	import flash.net.URLLoader;
 	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
 	import flash.net.URLRequestHeader;
 	import flash.net.URLRequestMethod;
 	import flash.net.URLVariables;
+	import flash.utils.ByteArray;
 	
 	import mx.utils.Base64Encoder;
 	import mx.utils.StringUtil;
@@ -19,22 +27,30 @@ package connectivity
 	 * This class contains methods to wrap interactions with the server.
 	 */
 	public class ServerAccess
-	{
-		//todo: caching
-		//todo: objects? what do we store and assume is availale?  return types?
-		//tumblre update with my sheet
-		
+	{		
 		// URL to server
 		public static const hostname:String = "https://nodejs-collective-server.herokuapp.com";
 		
 		// Actions
-		public static const ACTION_ADD_MESSAGE:String = "add_message";
-		public static const ACTION_ACCEPT:String = "accept";
-		public static const ACTION_DECLINE:String = "decline";
-		public static const ACTION_CANCEL:String = "cancel";
-		public static const ACTION_MARK_AS_COMPLETE:String = "mark_as_complete";
-		public static const ACTION_AGREE:String = "agree";
-		public static const ACTION_DISAGREE:String = "disagree";
+		public static const ACTION_ADD_MESSAGE:String 		= "add_message";
+		public static const ACTION_ACCEPT:String	 		= "accept";
+		public static const ACTION_DECLINE:String 			= "decline";
+		public static const ACTION_CANCEL:String 			= "cancel";
+		public static const ACTION_MARK_AS_COMPLETE:String 	= "mark_as_complete";
+		public static const ACTION_AGREE:String 			= "agree";
+		public static const ACTION_DISAGREE:String 			= "disagree";
+		
+		// Resources
+		public static const RESOURCE_TYPE_TOOLS:String 		= "tools";
+		public static const RESOURCE_TYPE_LAND:String		= "land";
+		public static const RESOURCE_TYPE_SERVICES:String 	= "services";
+		public static const RESOURCE_TYPE_PLANTS:String 	= "plants";
+		
+		// Image resizing: all uploaded images are resized to these dimensions.
+		private static const DESIRED_PROFILE_IMAGE_WIDTH:Number = 100.0;
+		private static const DESIRED_PROFILE_IMAGE_HEIGHT:Number = 100.0;
+		private static const DESIRED_RESOURCE_IMAGE_WIDTH:Number = 100.0;
+		private static const DESIRED_RESOURCE_IMAGE_HEIGHT:Number = 100.0;
 		
 		// Cached session info
 		private static var userId:String;
@@ -46,7 +62,7 @@ package connectivity
 		 */
 		public function ServerAccess()
 		{
-			// not used
+			throw new Error("This class cannot be instantiated.");
 		}
 		
 		// ========================================================================================
@@ -105,6 +121,14 @@ package connectivity
 			return !postcode.match(/^[1-9][0-9]{3}$/);
 		}
 		
+		/**
+		 * Adds an authentication header to the given request, as well as setting the request
+		 * method to POST (required due to AS3 limitation) and settings its data to an empty
+		 * json body "{}" (also due to AS3 limitation).
+		 * 
+		 * If email is null then it attempts to use cached settings, in which case the 
+		 * authenticate() method MUST have already been run at least once to flesh out the cache.
+		 */
 		private static function addAuthenticationHeader(request:URLRequest, email:String, 
 														password:String):void
 		{
@@ -153,13 +177,17 @@ package connectivity
 		/**
 		 * Provides a standard way to load a URLRequest.  This function will load the request
 		 * and callback with an appropriate Response containing the data from the server, converted
-		 * to a JSON object tree if applicable.  It also allows for onSuccess and onFailure event
-		 * hooks to be passed through.
+		 * to a JSON object tree if applicable.  
+		 * 
+		 * <p>It also allows for onSuccess and onFailure functions. These are given the loader as
+		 * their sole argument and can optionally return a Response, which will be used in the 
+		 * callback if present.
 		 */
 		private static function loadRequest(request:URLRequest,
 											callback:Function, 
 											onSuccess:Function = null, 
-											onFailure:Function = null):void
+											onFailure:Function = null,
+											binary:Boolean=false):void
 		{
 			var response:Response;
 			
@@ -168,6 +196,8 @@ package connectivity
 			loader.dataFormat = URLLoaderDataFormat.TEXT;
 			loader.addEventListener(Event.COMPLETE, completeHandler);
 			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+			if (binary)
+				loader.dataFormat = URLLoaderDataFormat.BINARY;
 			
 			// Load the request
 			try {
@@ -188,17 +218,17 @@ package connectivity
 			// Called when data is loaded successfully.
 			function completeHandler(event:Event):void {
 				var loader:URLLoader = URLLoader(event.target);
-				trace("completeHandler: " + loader.data);				
-				var data:Object = convertAnyJSON(loader.data);
+				trace("completeHandler: " + loader.data);
 				
 				// Call onSuccess function
 				if (onSuccess != null)
-					onSuccess(data);
+					response = onSuccess(loader);
 				
 				// Callback function: pass response indicating success along with the data, if any.
 				if (callback != null)
 				{
-					response = new Response(true, data);
+					if (response == null)
+						response = new Response(true, convertAnyJSON(loader.data));
 					callback(response);
 				}
 			}
@@ -207,20 +237,78 @@ package connectivity
 			// This event doesn't contain the status code for some messed up reason.
 			function ioErrorHandler(event:IOErrorEvent):void {				
 				var loader:URLLoader = URLLoader(event.target);
-				trace("ioErrorHandler: " + event + ", data: " + loader.data);
-				var data:Object = convertAnyJSON(loader.data);
+				trace("ioErrorHandler: " + event + ", data: " + loader.data);				
 				
 				// Call onFailure function
 				if (onFailure != null)
-					onFailure(data);
+					response = onFailure(loader);
 				
 				// Callback function: pass response indicating failure along with the data, if any.
 				if (callback != null)
 				{
-					response = new Response(false, data);
+					if (response == null)
+						response = new Response(false, convertAnyJSON(loader.data));
 					callback(response);
 				}
 			}
+		}
+		
+		/**
+		 * Scales and/or crops the image to be at the desired width and height specified by
+		 * DESIRED_IMAGE_WIDTH and DESIRED_IMAGE_HEIGHT, and returns the resulting image.
+		 */
+		private static function handleBitmapResizing(image:Bitmap):Bitmap
+		{
+			// Both dimensions too large: scale
+			if (image.width > DESIRED_PROFILE_IMAGE_WIDTH && image.height > DESIRED_PROFILE_IMAGE_HEIGHT)
+			{
+				// Determine scale to use (go by the least drastic scale)
+				var xScale:Number = DESIRED_PROFILE_IMAGE_WIDTH / image.width;
+				var yScale:Number = DESIRED_PROFILE_IMAGE_HEIGHT / image.height;
+				var scale:Number = Math.max(xScale, yScale);
+				
+				// Create scaling matrix
+				var matrix:Matrix = new Matrix();
+				matrix.scale(scale, scale);
+				
+				// Create a new bitmap data at that scale and morph the image to it
+				var smallBMD:BitmapData = new BitmapData(image.width * scale, image.height * scale, true, 0x000000);
+				smallBMD.draw(image.bitmapData, matrix, null, null, null, true);
+				
+				// Reassemble as bitmap
+				image = new Bitmap(smallBMD, PixelSnapping.NEVER, true);
+			}
+			
+			// Too wide? Cut sides
+			if (image.width > DESIRED_PROFILE_IMAGE_WIDTH) 
+			{
+				var startXPoint:Point = new Point(image.width/2.0 - DESIRED_PROFILE_IMAGE_WIDTH/2.0, 0);
+				var croppedX:BitmapData = 
+					cropBitmapData(image.bitmapData, startXPoint, DESIRED_PROFILE_IMAGE_WIDTH, DESIRED_PROFILE_IMAGE_HEIGHT);
+				image = new Bitmap(croppedX, PixelSnapping.NEVER, true);
+			}
+			
+			// Too high? Cut top and bottom
+			if (image.height > DESIRED_PROFILE_IMAGE_HEIGHT) 
+			{
+				var startYPoint:Point = new Point(0, image.height/2.0 - DESIRED_PROFILE_IMAGE_HEIGHT/2.0);
+				var croppedY:BitmapData = 
+					cropBitmapData(image.bitmapData, startYPoint, DESIRED_PROFILE_IMAGE_WIDTH, DESIRED_PROFILE_IMAGE_HEIGHT);
+				image = new Bitmap(croppedY, PixelSnapping.NEVER, true);
+			}
+			return image;
+		}
+		
+		/**
+		 * Crops bitmap data.
+		 * From: http://www.kirupa.com/forum/showthread.php?321055-crop-my-bitmap-data
+		 */
+		private static function cropBitmapData(sourceBitmapData:BitmapData, startPoint:Point, width:Number, height:Number):BitmapData
+		{
+			var croppedBD:BitmapData = new BitmapData(width, height);
+			croppedBD.copyPixels(sourceBitmapData, new Rectangle(startPoint.x, startPoint.y, width, height), new Point(0, 0));
+			return croppedBD.clone();
+			croppedBD.dispose();
 		}
 		
 		// ========================================================================================
@@ -232,6 +320,8 @@ package connectivity
 		 * Requires that authenticate() have been called at least once.
 		 */
 		public static function getUserId():String {
+			if (userId == null)
+				throw new Error("No current userId: call authenticate() first!");
 			return userId;
 		}
 		
@@ -306,9 +396,10 @@ package connectivity
 			loadRequest(request, callback, onSuccess);
 			
 			// Handle events.
-			function onSuccess(data:Object):void {
+			function onSuccess(loader:URLLoader):Response {
 				// Save the user id for this session
-				ServerAccess.userId = data._id;
+				ServerAccess.userId = convertAnyJSON(loader.data)._id;
+				return null;
 			}
 			function onFailure(data:Object):void {}
 		}
@@ -350,11 +441,13 @@ package connectivity
 			loadRequest(request, callback, onSuccess);
 			
 			// Handle events.
-			function onSuccess(data:Object):void {
-				// Save user data
+			function onSuccess(loader:URLLoader):Response {
+				// Save the user id for this session
+				var data:Object = convertAnyJSON(loader.data);
 				ServerAccess.userId = data._id;
 				ServerAccess.email = email;
 				ServerAccess.password = password;
+				return null;
 			}
 		}
 		
@@ -362,7 +455,7 @@ package connectivity
 		 * Attempts to get a user's profile from the server.
 		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * @param userId	The user's id (optional, use null to use current user)
+		 * @param userId	The user's id
 		 * @param callback 	The function to call when the attempt is complete.
 		 */
 		public static function getProfile(userId:String, 
@@ -382,9 +475,6 @@ package connectivity
 			}
 			
 			// --- REQUEST ------------------------------------------------------------------------
-			
-			// Cached info
-			if (userId == null) 	userId = ServerAccess.userId;
 			
 			// Construct URL request
 			var request:URLRequest = new URLRequest(hostname + "/getProfile/"+userId);
@@ -475,10 +565,11 @@ package connectivity
 			loadRequest(request, callback, onSuccess);
 			
 			// Handle events.
-			function onSuccess(data:Object):void {
+			function onSuccess(loader:URLLoader):Response {
 				// Save user data
 				if (email != null) 		ServerAccess.email = email;
 				if (password != null) 	ServerAccess.password = password;
+				return null;
 			}
 		}
 		
@@ -541,7 +632,7 @@ package connectivity
 		 * Attempts to add a resource for the currently authenticated user.
 		 * <br>Requires that authenticate() have been called at least once.
 		 * 
-		 * @param type			The type of resource
+		 * @param type			The type of resource - use ServerAccess.RESOURCE_TYPE_*
 		 * @param lat 			The latitude of the user
 		 * @param lon 			The longitude of the user
 		 * @param title			The title of the resource
@@ -561,8 +652,14 @@ package connectivity
 			
 			// --- VALIDATION --------------------------------------------------------------------- 
 				
-			if (type == null || type.length == 0)
-				response = new Response(false, "Invalid type.");	
+			switch(type)
+			{
+				case RESOURCE_TYPE_LAND: break;
+				case RESOURCE_TYPE_PLANTS: break;
+				case RESOURCE_TYPE_SERVICES: break;
+				case RESOURCE_TYPE_TOOLS: break;
+				default: response = new Response(false, "Invalid type.");
+			}
 			if (isInvalidLocation(lat,lon))	response = new Response(false, "Invalid location.");
 			if (description == null || description.length == 0)
 				response = new Response(false, "Invalid description.");	
@@ -683,7 +780,7 @@ package connectivity
 		 * @param lon 			The longitude of the coordinates
 		 * @param radius		The radius with which to search resources around the coordinates
 		 * @param filterTypes	[Optional] An array of strings containing valid resource types to 
-		 * 						retrieve. 
+		 * 						retrieve - use ServerAccess.RESOURCE_TYPE_* as array entries
 		 * @param searchTerm	[Optional] A search string to search titles by.
 		 * @param callback 		The function to call when the attempt is complete
 		 */
@@ -743,7 +840,7 @@ package connectivity
 		 * <p>For optional parameters: Use 'null' or 'NaN' if you don't want these to change		
 		 * 
 		 * @param resourceId:	The id of the resource to edit	
-		 * @param type			[Optional] The type of resource
+		 * @param type			[Optional] The type of resource  - use Serveraccess.RESOURCE_TYPE_*
 		 * @param lat 			[Optional] The latitude of the user
 		 * @param lon 			[Optional] The longitude of the user
 		 * @param title			[Optional] The title of the resource
@@ -766,8 +863,15 @@ package connectivity
 			
 			if (resourceId == null || resourceId.length == 0)
 				response = new Response(false, "Invalid resource Id.");	
-			if (type != null && type.length == 0)
-				response = new Response(false, "Invalid type.");	
+			if (type != null)
+				switch (type)
+				{
+					case RESOURCE_TYPE_LAND: break;
+					case RESOURCE_TYPE_PLANTS: break;
+					case RESOURCE_TYPE_SERVICES: break;
+					case RESOURCE_TYPE_TOOLS: break;
+					default: response = new Response(false, "Invalid type.");
+				}					
 			if (!isNaN(lat) && !isNaN(lon) && isInvalidLocation(lat,lon))
 				response = new Response(false, "Invalid location.");		
 			if (description != null && description.length == 0)
@@ -985,6 +1089,236 @@ package connectivity
 			
 			// Load request and callback.
 			loadRequest(request, callback);
+		}
+		
+		/**
+		 * Attempts to get a trade by its tradeid.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * @param tradeId	The id of the trade
+		 * @param callback 	The function to call when the attempt is complete
+		 */
+		public static function getTrade(tradeId:String,
+										callback:Function):void 
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (tradeId == null || tradeId.length == 0)
+				response = new Response(false, "Invalid trade Id.");
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Create URL variables -- this allows our fields to be placed as objects and then 
+			// sexily placed in our request's data.
+			// However, since we're doing a POST, we have to manually toString() it and put it onto
+			// the end of the url.
+			//var vars:URLVariables = new URLVariables();
+			//vars.action = action; //TODO cache
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/getTrade/"+tradeId);//+"/Actions?"+vars.toString());
+			addAuthenticationHeader(request, null, null);
+			//request.contentType = "application/x-www-form-urlencoded";
+			
+			// Load request and callback.
+			loadRequest(request, callback);
+		}
+		
+		/**
+		 * Attempts to get the trades belonging to the current user.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * @param callback 	The function to call when the attempt is complete
+		 */
+		public static function getTrades(callback:Function):void 
+		{
+			var response:Response;
+						
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Create URL variables -- this allows our fields to be placed as objects and then 
+			// sexily placed in our request's data.
+			// However, since we're doing a POST, we have to manually toString() it and put it onto
+			// the end of the url.
+			//var vars:URLVariables = new URLVariables();
+			//vars.date = date; //TODO: date cache
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/users/"+userId+"/getTrades");//?"+vars.toString());
+			addAuthenticationHeader(request, null, null);
+			//request.contentType = "application/x-www-form-urlencoded";
+			
+			// Load request and callback.
+			loadRequest(request, callback);
+		}
+		
+		/**
+		 * Attempts to upload an image to the server as the current user's profile image, 
+		 * scaling/cropping/converting it before transmitting.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * @param image		The bitmap image to upload
+		 * @param callback 	The function to call when the attempt is complete
+		 */
+		public static function addProfileImage(image:Bitmap,
+											   callback:Function):void
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (image == null)
+				response = new Response(false, "Invalid image.");
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Resize image
+			trace("Old size: "+image.width+","+image.height);
+			image = handleBitmapResizing(image);
+			trace("New size: "+image.width+","+image.height);
+			
+			// Convert to png
+			var data:ByteArray = PNGEncoder.encode(image.bitmapData);
+						
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/addProfileImage/"+userId);
+			addAuthenticationHeader(request, null, null);
+			
+			// Transmitting a binary image
+			request.contentType = "binary/octet-stream";
+			request.requestHeaders.push(new URLRequestHeader('Cache-Control', 'no-cache'));
+			request.data = data;
+			
+			// Load request then callback (binary data = true!)
+			loadRequest(request, callback, onSuccess, null, true);
+			
+			// Handle events.
+			function onSuccess(loader:URLLoader):Response {
+				// Cache image TODO
+				return null;
+			}
+		}
+		
+		/**
+		 * Attempts to upload an image to the server for the given resource id, 
+		 * scaling/cropping/converting it before transmitting.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * @param image			The bitmap image to upload
+		 * @param resourceId	The id of the resource to attach the picture to
+		 * @param callback 		The function to call when the attempt is complete
+		 */
+		public static function addResourceImage(image:Bitmap,
+												resourceId:String,
+											    callback:Function):void
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (image == null)
+				response = new Response(false, "Invalid image.");
+			if (resourceId == null || resourceId.length == 0)
+				response = new Response(false, "Invalid resource Id.");	
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Resize image
+			trace("Old size: "+image.width+","+image.height);
+			image = handleBitmapResizing(image);
+			trace("New size: "+image.width+","+image.height);
+			
+			// Convert to png
+			var data:ByteArray = PNGEncoder.encode(image.bitmapData);
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/addResourceImage/"+resourceId);
+			addAuthenticationHeader(request, null, null);
+			
+			// Transmitting a binary image
+			request.contentType = "binary/octet-stream";
+			request.requestHeaders.push(new URLRequestHeader('Cache-Control', 'no-cache'));
+			request.data = data;
+			
+			// Load request then callback (binary data = true!)
+			loadRequest(request, callback, onSuccess, null, true);
+			
+			// Handle events.
+			function onSuccess(loader:URLLoader):Response {
+				// Cache image TODO
+				return null;
+			}
+		}
+		
+		/**
+		 * Attempts to retrieve a user's profile image.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * @param userId	The user's id
+		 * @param callback 	The function to call when the attempt is complete
+		 */
+		public static function getProfileImage(userId:String,
+											   callback:Function):void
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (userId == null || userId.length == 0)
+				response = new Response(false, "Invalid user id.");
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+						
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/getProfileImage/"+userId);
+			addAuthenticationHeader(request, null, null);
+			
+			// looks like i'll need to use Loader here ?
+			
+			// Load request then callback
+			loadRequest(request, callback, onSuccess);
+			
+			// Handle events.
+			function onSuccess(loader:URLLoader):Response {
+				// Convert the contents to displayable format
+				
+				// Replace loader's content
+				
+				// Cache image TODO
+				
+				return null;
+			}
 		}
 	}
 }
