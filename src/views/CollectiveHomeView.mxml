@@ -13,8 +13,8 @@
 			
 			protected function onCC():void{
 				ServerAccess.register('Thomas','Creagh',12.3,12.4,
-					'2 Collina Terrace, Thorndon', 
-					'Wellington', '6011','llamalovin@gmail.com','llama',
+					'2 pomare road, belmont', 
+					'Wellington', '5010','creaghthom@myvuw.ac.nz','llama',
 					onRegisterSuccess)
 					
 			}
@@ -42,7 +42,7 @@
 				{
 					// Do successful operation stuffs.  use response.data to access returned data.
 					trace('success!  ');
-					navigator.replaceView(map);
+					navigator.replaceView(negotiations);
 					
 				}		
 				else

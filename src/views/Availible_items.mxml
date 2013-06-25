@@ -53,6 +53,7 @@
 			protected var group:Group;
 			protected var source:String;
 			protected var type:String;
+			protected var description:Label;
 			
 			protected function onCC():void {
 				ServerAccess.getResources(ServerAccess.getUserId(), storedItems);
@@ -64,7 +65,7 @@
 					// Do successful operation stuffs.  use response.data to access returned data.
 					trace('success!  ' + response.getData());
 					
-					for (var resource:Object in response.getData()) 
+					for each (var resource:Object in response.getData()) 
 					{
 						this.base = new Image;
 						this.group = new Group;
@@ -135,9 +136,11 @@
 				this.button = new Image;
 				this.itemTitle = new Label;
 				this.value = new Label;
+				this.description = new Label;
 				itemTitle.text=itemName.text;
 				itemTitle.y=7;
 				itemTitle.x=75;
+				description.text=itemDescription.text;
 				value.text=itemValue.value + " pts";
 				value.y=7;
 				value.x=275;
@@ -153,7 +156,7 @@
 				group.addElement(itemTitle);
 				group.addElement(value);
 				wrapper.addElement(group);
-				ServerAccess.addResource(type, r.lat, r.lng, itemName.text, "jioijjil", itemValue.value, onResourceAdded);
+				ServerAccess.addResource(type, r.lat, r.lng, itemName.text, itemDescription.text, itemValue.value, onResourceAdded);
 			}
 			
 			protected function onResourceAdded(response:Response):void {
@@ -171,6 +174,7 @@
 			
 			protected function detailButton(event:MouseEvent):void {
 				this.setCurrentState("add");
+				//ServerAccess.getResource(
 			}
 			
 			protected function tools_clickHandler(event:MouseEvent):void

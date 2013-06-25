@@ -43,11 +43,13 @@
 			protected var button4:Image;
 			protected var message:TextInput;
 			protected var newMessage:Image;
-			protected var cancel:Image;
 			protected var profileImage:Image;
 			protected var messageBox:Label;
 			protected var barGroup:Group;
 			protected var cancel1:Image;
+			protected var userPic:Image;
+			protected var quoteBox:Image;
+			protected var quoteGroup:Group;
 			
 			protected function a_clickHandler(event:MouseEvent):void
 			{
@@ -58,20 +60,21 @@
 				this.button3 = new Image;
 				this.button4 = new Image;
 				this.barGroup = new Group;
-				bgPopup.source="assets/buttons.png";
+				bgPopup.source="assets/menubase.png";
 				bgPopup.x=0;
-				bgPopup.y=400;
-				button1.source="assets/menu bar options.jpg";
-				button1.y=350;
+				bgPopup.y=175;
+				bgPopup.width=320;
+				button1.source="assets/menucancel.png";
+				button1.y=375;
 				//button1.addEventListener(MouseEvent.CLICK, cancelButton);
-				button2.source="assets/menu bar options.jpg";
-				button2.y=300;
+				button2.source="assets/menufailed.png";
+				button2.y=325;
 				//button2.addEventListener(MouseEvent.CLICK, failed);
-				button3.source="assets/menu bar options.jpg";
-				button3.y=250;
+				button3.source="assets/menucomplete.png";
+				button3.y=275;
 				//button3.addEventListener(MouseEvent.CLICK, complete);
-				button4.source="assets/menu bar options.jpg";
-				button4.y=200;
+				button4.source="assets/menuaddmessage.png";
+				button4.y=225;
 				button4.addEventListener(MouseEvent.CLICK, addMessage);
 				barGroup.height=400;
 				barGroup.addElement(bgPopup);
@@ -90,10 +93,17 @@
 				this.cancel1 = new Image;
 				newMessage.source="assets/b1.png";
 				cancel1.source="assets/b2.png";
-				cancel1.x=50;
-				cancel1.y=100;
-				newMessage.y=100;
+				cancel1.x=120;
+				cancel1.y=335;
+				cancel1.width=100;
+				newMessage.y=335;
+				newMessage.x=10;
+				newMessage.width=100;
 				newMessage.addEventListener(MouseEvent.CLICK, addingMessage);
+				message.x=10;
+				message.y=225;
+				message.width=290;
+				message.height=125;
 				barGroup.removeElement(button1);
 				barGroup.removeElement(button2);
 				barGroup.removeElement(button3);
@@ -106,12 +116,21 @@
 			protected function addingMessage(event:MouseEvent):void
 			{
 				this.messageBox = new Label;
+				this.userPic = new Image;
+				this.quoteBox = new Image;
+				this.quoteGroup = new Group;
+				quoteBox.source="assets/textimage.png";
 				messageBox.text=message.text;
+				messageBox.y=5;
+				messageBox.x=110;
+				messageBox.width=100;
 				barGroup.removeElement(message);
 				barGroup.removeElement(newMessage);
 				barGroup.removeElement(cancel1);
-				this.addElement(messageBox);
-				
+				quoteGroup.addElement(messageBox);
+				quoteGroup.addElement(quoteBox);
+				usertext.addElement(quoteGroup);
+				barGroup.removeAllElements();
 //				var something:Array = new Array("tools","land");
 			}
 			
@@ -129,9 +148,13 @@
 			 source="assets/Untitled-25.png" smooth="true"/>
 
 
-	<s:Image id="a" x="12" y="419" width="298" height="41" alpha="1" source="assets/menu bar options.jpg" click="a_clickHandler(event)"/>
+	<s:Image id="a" x="0" y="412" width="320" height="48" alpha="1" source="assets/menubutton.png" click="a_clickHandler(event)"/>
 	<s:Image id="b" x="11" y="322" width="299" height="97" alpha="0" source="assets/buttons.png"/>
-	<s:VGroup y="0" id="f">
+	<s:VGroup y="83" id="usertext" width="240">
+		
+	</s:VGroup>
+	
+	<s:VGroup y="80" id="othertext" width="240" x="80">
 		
 	</s:VGroup>
 

@@ -1,18 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
 		xmlns:s="library://ns.adobe.com/flex/spark"
+		creationComplete="onCC()"
 		actionBarVisible="false" tabBarVisible="false" title="user">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
-			import connectivity.Response;
-			import connectivity.ServerAccess;
+			import connectivity.*;
 			
 			import spark.events.ViewNavigatorEvent;
 			
+			protected function onCC():void {
+				ServerAccess.getProfile(ServerAccess.getUserId(), profileInfo);
+			}
 			
+			protected function profileInfo(response:Response):void {
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
+					
+					for each (var resource:Object in response.getData()) 
+					{
+						
+					}
+					
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+			}
 			
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
@@ -42,12 +62,12 @@
 	</fx:Script>
 
 	<s:Image x="0" y="-240" width="320" source="assets/bg.png"/>
-	<s:Rect x="147" y="118" width="116" height="25">
+	<s:Rect x="135" y="118" width="121" height="25">
 		<s:fill>
 			<s:SolidColor color="#659e35"/>
 		</s:fill>
 	</s:Rect>
-	<s:Image x="0" y="-240" width="320" source="assets/bg3.png"/>
+	<s:Image x="0" width="320" height="480" source="assets/bg3.png"/>
 	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
 	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
 			 source="assets/Untitled-2.png" smooth="true"/>
@@ -64,9 +84,13 @@
 	</s:Rect>
 	<s:Scroller x="75" y="267" width="245" height="148">
 		<s:Group width="100%" height="100%">
+			<s:layout>
+				<s:VerticalLayout/>
+			</s:layout>
 			
 		</s:Group>
 	</s:Scroller>	
+
 
 	
 </s:View>
