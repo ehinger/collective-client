@@ -28,6 +28,9 @@ package connectivity
 	 */
 	public class ServerAccess
 	{		
+		// Debug mode?
+		private static const DEBUG:Boolean = true;
+		
 		// URL to server
 		public static const hostname:String = "https://nodejs-collective-server.herokuapp.com";
 		
@@ -209,7 +212,7 @@ package connectivity
 				// The errors that can be thrown are not tied to the server's responses
 				// but are rather things like out of memory, syntax errors, etc. so we
 				// can consider these to be rare occurrences.
-				trace("Unable to load requested document.");
+				if (DEBUG) trace("Unable to load requested document.");
 				response = new Response(false, "Internal Error!");
 				callback(response);
 				return;
@@ -218,7 +221,7 @@ package connectivity
 			// Called when data is loaded successfully.
 			function completeHandler(event:Event):void {
 				var loader:URLLoader = URLLoader(event.target);
-				trace("completeHandler: " + loader.data);
+				if (DEBUG) trace("completeHandler: " + loader.data);
 				
 				// Call onSuccess function
 				if (onSuccess != null)
@@ -237,7 +240,7 @@ package connectivity
 			// This event doesn't contain the status code for some messed up reason.
 			function ioErrorHandler(event:IOErrorEvent):void {				
 				var loader:URLLoader = URLLoader(event.target);
-				trace("ioErrorHandler: " + event + ", data: " + loader.data);				
+				if (DEBUG) trace("ioErrorHandler: " + event + ", data: " + loader.data);				
 				
 				// Call onFailure function
 				if (onFailure != null)
@@ -320,6 +323,7 @@ package connectivity
 		 * Requires that authenticate() have been called at least once.
 		 */
 		public static function getUserId():String {
+			if (DEBUG) trace("userId="+userId);
 			if (userId == null)
 				throw new Error("No current userId: call authenticate() first!");
 			return userId;
@@ -399,6 +403,7 @@ package connectivity
 			function onSuccess(loader:URLLoader):Response {
 				// Save the user id for this session
 				ServerAccess.userId = convertAnyJSON(loader.data)._id;
+				trace("Saving user id = "+userId);
 				return null;
 			}
 			function onFailure(data:Object):void {}
@@ -465,7 +470,7 @@ package connectivity
 			
 			// --- VALIDATION --------------------------------------------------------------------- 
 			
-			if(userId != null && userId.length == 0)
+			if(userId == null || userId.length == 0)
 				response = new Response(false, "Invalid user ID.");
 			
 			// Callback and abort if validation failed.
