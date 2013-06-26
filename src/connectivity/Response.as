@@ -1,8 +1,11 @@
 package connectivity
 {
+	import flash.display.Bitmap;
+
 	public class Response 
 	{
 		public static const TYPE_STRING:String = "TYPE_STRING";
+		public static const TYPE_BITMAP:String = "TYPE_BITMAP";
 		public static const TYPE_OBJECT:String = "TYPE_OBJECT";
 		
 		private var success:Boolean;
@@ -16,13 +19,11 @@ package connectivity
 			
 			// Set appropriate data type.
 			if (data is String) 
-			{
 				type = TYPE_STRING;
-			} 
-			else
-			{
+			else if (data is Bitmap) 
+				type = TYPE_BITMAP;
+			else 
 				type = TYPE_OBJECT;
-			}
 		}
 		public function isSuccess():Boolean {
 			return success;			

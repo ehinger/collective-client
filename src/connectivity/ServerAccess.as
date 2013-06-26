@@ -1,12 +1,19 @@
 package connectivity
 {
-	import com.adobe.images.PNGEncoder;
+	import com.adobe.crypto.MD5;
+	import com.adobe.images.JPGEncoder;
+	import com.dynamicflash.util.Base64;
 	
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
+	import flash.display.Loader;
 	import flash.display.PixelSnapping;
 	import flash.events.Event;
+	import flash.events.HTTPStatusEvent;
 	import flash.events.IOErrorEvent;
+	import flash.filesystem.File;
+	import flash.filesystem.FileMode;
+	import flash.filesystem.FileStream;
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
@@ -55,6 +62,11 @@ package connectivity
 		private static const DESIRED_RESOURCE_IMAGE_WIDTH:Number = 100.0;
 		private static const DESIRED_RESOURCE_IMAGE_HEIGHT:Number = 100.0;
 		
+		// Caching
+		private static var cacheProfileImageDir:File = null;
+		private static var cacheResourceImageDir:File = null;
+		private static var setUp:Boolean = false;
+		
 		// Cached session info
 		private static var userId:String;
 		private static var email:String;
@@ -71,6 +83,102 @@ package connectivity
 		// ========================================================================================
 		// INTERNAL FUNCTIONS
 		// ========================================================================================
+		
+		/**
+		 * Sets up ServerAccess.
+		 * - Determines if caching is possible and sets it up if so
+		 * - Reads last user's email who logged in
+		 */
+		private static function setup():void
+		{
+			// This can only run once.
+			if (setUp) return;
+			setUp = true;
+			
+			// Define cache directories
+			cacheProfileImageDir = File.applicationStorageDirectory.resolvePath("profiles/");
+			cacheResourceImageDir = File.applicationStorageDirectory.resolvePath("resources/");
+
+			// Create cache directories (nothing happens if they already exist)
+			cacheProfileImageDir.createDirectory();
+			cacheResourceImageDir.createDirectory();
+		}
+		
+		/**
+		 * Caches the given image in the given dir with the given filename.
+		 */
+		private static function cacheImage(image:Bitmap, dir:File, name:String):void
+		{
+			var file:File = dir.resolvePath(name+".jpg");
+			var stream:FileStream = new FileStream();
+			try {
+				stream.open(file, FileMode.WRITE);
+				
+				// Encode as jpg
+				var encoder:JPGEncoder = new JPGEncoder();		
+				var bytes:ByteArray = encoder.encode(image.bitmapData);
+				
+				stream.writeBytes(bytes);
+				stream.close();
+			} catch (error:Error) {
+				trace("Cache: Could not cache image");
+			}
+			trace("Cache: Cached image to "+file.nativePath);
+		}
+		
+		/**
+		 * Gets the image at the given dir under the given name, as a byte array.
+		 */
+		private static function getCachedImage(dir:File, name:String):ByteArray
+		{
+			var file:File = dir.resolvePath(name+".jpg");
+			var stream:FileStream = new FileStream();
+			var bytes:ByteArray = new ByteArray();
+			try {
+				stream.open(file, FileMode.READ);
+				stream.readBytes(bytes);
+				stream.close();
+			} catch (error:Error) {
+				trace("Cache: Cached image unavailable. "+error.message);
+				return null;
+			}
+			return bytes;
+		}
+		
+		/**
+		 * Caches the given email as the last user email.
+		 */
+		private static function cacheEmail(email:String):void 
+		{
+			var file:File = File.applicationStorageDirectory.resolvePath("lastlogin.txt");
+			var stream:FileStream = new FileStream();
+			try {
+				stream.open(file, FileMode.WRITE);
+				stream.writeUTF(email);
+				stream.close();
+			} catch (error:Error) {
+				trace("Cache: Could not cache last user email");
+			}
+			trace("Cache: Cached email "+email);
+		}
+		
+		/**
+		 * Gets the cached email from file, or null if it doesn't exist.
+		 */
+		private static function getCachedEmail():String
+		{
+			var file:File = File.applicationStorageDirectory.resolvePath("lastlogin.txt");
+			var stream:FileStream = new FileStream();
+			var email:String = null;
+			try {
+				stream.open(file, FileMode.READ);
+				email = stream.readUTF();
+				stream.close();
+			} catch (error:Error) {
+				trace("Cache: Last user email not available");
+			}
+			return email;
+		}
 		
 		// from le nets java2s.com
 		private static function toTitleCase( original:String ):String {
@@ -151,20 +259,13 @@ package connectivity
 				So an awesome thing about Adobe Air: you can't use authorisation headers in GET 
 				requests. Why? "browser limitations". Fucked if I know what that means.  Therefore
 				we need to use POST whenever an authorisation header is used, yay.
-				
-				Also, Authorization is a header that can't be used outside of the application 
-				security sandbox. This appears to just be fancyspeak for "the application" so we're
-				alright.  
 			*/
 			request.method = URLRequestMethod.POST;
 			
 			// Encode the email+password into a base64 string
-			var encoder:Base64Encoder = new Base64Encoder();        
-			encoder.insertNewLines = false; // it tries to insert new lines :\
-			encoder.encode(email+":"+password);
+			var header:String = Base64.encode(email+":"+password);
 			
 			// Include it in an Authorization header and attach it to the request. 
-			var header:String = encoder.toString();
 			var credsHeader:URLRequestHeader = 
 				new URLRequestHeader("Authorization", "Basic " + header);
 			request.requestHeaders.push(credsHeader);
@@ -199,6 +300,7 @@ package connectivity
 			loader.dataFormat = URLLoaderDataFormat.TEXT;
 			loader.addEventListener(Event.COMPLETE, completeHandler);
 			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+			loader.addEventListener(HTTPStatusEvent.HTTP_RESPONSE_STATUS, httpStatusHandler);
 			if (binary)
 				loader.dataFormat = URLLoaderDataFormat.BINARY;
 			
@@ -206,7 +308,7 @@ package connectivity
 			try {
 				// This loads the request asynchronously. Event functions will fire
 				// as appropriate.
-				trace("Loading request "+request.url);
+				if (DEBUG) trace("Loading request "+request.url);
 				loader.load(request);
 			} catch (error:Error) {
 				// The errors that can be thrown are not tied to the server's responses
@@ -253,6 +355,34 @@ package connectivity
 						response = new Response(false, convertAnyJSON(loader.data));
 					callback(response);
 				}
+			}
+			
+			function httpStatusHandler(event:HTTPStatusEvent):void {
+				trace("HTTP Status code: " + event.status);
+			}
+		}
+		
+		/**
+		 * Converts the given ByteArray to a Bitmap and passes it to the callback function
+		 * when it's done.
+		 */
+		private static function convertToBitmap(data:ByteArray, callback:Function):void
+		{
+			// Create loader and start loading image
+			var imageLoader:Loader = new Loader();
+			imageLoader.contentLoaderInfo.addEventListener(Event.COMPLETE, imageLoadedHandler);
+			imageLoader.loadBytes(data);
+			
+			// This event is called when loading is done.
+			function imageLoadedHandler(event:Event):void
+			{
+				// Image has now been loaded, create Bitmap from it
+				var src:BitmapData = new BitmapData(event.target.content.width, event.target.content.height);
+				src.draw(event.target.content);
+				var image:Bitmap = new Bitmap(src);
+				
+				// Callback with image
+				callback(image);
 			}
 		}
 		
@@ -313,7 +443,7 @@ package connectivity
 			return croppedBD.clone();
 			croppedBD.dispose();
 		}
-		
+				
 		// ========================================================================================
 		// PUBLIC FUNCTIONS FOR INTERACTION WITH SERVER
 		// ========================================================================================
@@ -327,6 +457,14 @@ package connectivity
 			if (userId == null)
 				throw new Error("No current userId: call authenticate() first!");
 			return userId;
+		}
+		
+		/**
+		 * Gets the email of the last person to log in, or "" if not available.
+		 */
+		public static function getLastUserEmail():String {
+			var email:String = getCachedEmail();
+			return email==null?"":email;
 		}
 		
 		/**
@@ -403,7 +541,8 @@ package connectivity
 			function onSuccess(loader:URLLoader):Response {
 				// Save the user id for this session
 				ServerAccess.userId = convertAnyJSON(loader.data)._id;
-				trace("Saving user id = "+userId);
+				// Cache the email
+				cacheEmail(email);
 				return null;
 			}
 			function onFailure(data:Object):void {}
@@ -422,6 +561,9 @@ package connectivity
 											password:String, 
 											callback:Function):void
 		{
+			// First time setup
+			if (!setUp) setup();
+			
 			var response:Response;
 			
 			// --- VALIDATION --------------------------------------------------------------------- 
@@ -452,6 +594,8 @@ package connectivity
 				ServerAccess.userId = data._id;
 				ServerAccess.email = email;
 				ServerAccess.password = password;
+				// Cache the email
+				cacheEmail(email);
 				return null;
 			}
 		}
@@ -1194,29 +1338,37 @@ package connectivity
 			// --- REQUEST ------------------------------------------------------------------------
 			
 			// Resize image
-			trace("Old size: "+image.width+","+image.height);
 			image = handleBitmapResizing(image);
-			trace("New size: "+image.width+","+image.height);
+
+			// Convert image
+			var encoder:JPGEncoder = new JPGEncoder();
+			var data:ByteArray = encoder.encode(image.bitmapData);
+
+			// Encode into base64 string
+			var base64:String = Base64.encodeByteArray(data);
 			
-			// Convert to png
-			var data:ByteArray = PNGEncoder.encode(image.bitmapData);
-						
+			// Get MD5
+			var md5:String = MD5.hashBinary(data);
+			
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/addProfileImage/"+userId);
+				new URLRequest(hostname+"/uploadProfileImage/"+userId);
 			addAuthenticationHeader(request, null, null);
 			
-			// Transmitting a binary image
-			request.contentType = "binary/octet-stream";
-			request.requestHeaders.push(new URLRequestHeader('Cache-Control', 'no-cache'));
-			request.data = data;
-			
+			// Construct JSON body
+			var bodyObject:Object = {
+				image:base64,
+				hash:md5
+			};
+			request.data = JSON.stringify(bodyObject);
+						
 			// Load request then callback (binary data = true!)
 			loadRequest(request, callback, onSuccess, null, true);
 			
 			// Handle events.
 			function onSuccess(loader:URLLoader):Response {
-				// Cache image TODO
+				// Write image to cache
+				cacheImage(image, cacheProfileImageDir, userId);
 				return null;
 			}
 		}
@@ -1252,29 +1404,37 @@ package connectivity
 			// --- REQUEST ------------------------------------------------------------------------
 			
 			// Resize image
-			trace("Old size: "+image.width+","+image.height);
 			image = handleBitmapResizing(image);
-			trace("New size: "+image.width+","+image.height);
 			
-			// Convert to png
-			var data:ByteArray = PNGEncoder.encode(image.bitmapData);
+			// Convert image
+			var encoder:JPGEncoder = new JPGEncoder();
+			var data:ByteArray = encoder.encode(image.bitmapData);
+			
+			// Encode into base64 string
+			var base64:String = Base64.encodeByteArray(data);
+			
+			// Get MD5
+			var md5:String = MD5.hashBinary(data);
 			
 			// Construct URL request
 			var request:URLRequest = 
 				new URLRequest(hostname+"/addResourceImage/"+resourceId);
 			addAuthenticationHeader(request, null, null);
 			
-			// Transmitting a binary image
-			request.contentType = "binary/octet-stream";
-			request.requestHeaders.push(new URLRequestHeader('Cache-Control', 'no-cache'));
-			request.data = data;
+			// Construct JSON body
+			var bodyObject:Object = {
+				image:base64,
+				hash:md5
+			};
+			request.data = JSON.stringify(bodyObject);
 			
 			// Load request then callback (binary data = true!)
 			loadRequest(request, callback, onSuccess, null, true);
 			
 			// Handle events.
 			function onSuccess(loader:URLLoader):Response {
-				// Cache image TODO
+				// cache image
+				cacheImage(image, cacheResourceImageDir, resourceId);
 				return null;
 			}
 		}
@@ -1304,25 +1464,222 @@ package connectivity
 			
 			// --- REQUEST ------------------------------------------------------------------------
 						
+			// Get cached image bytes			
+			var bytes:ByteArray = getCachedImage(cacheProfileImageDir, userId);
+			var usedCache:Boolean = false;
+			var md5:String = null;
+			
+			// Not null: there is a cached image
+			if (bytes != null) 
+			{
+				// Determine md5
+				md5 = MD5.hashBinary(bytes);
+				if (DEBUG) trace("Cache: Found existing image for userId="+userId);
+			}
+			
+			// Create URL variables
+			var vars:URLVariables = new URLVariables();
+			if (md5 != null) vars.hash = md5;
+						
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/getProfileImage/"+userId);
+				new URLRequest(hostname+"/getProfileImage/"+userId+"?"+vars.toString());
 			addAuthenticationHeader(request, null, null);
+			request.contentType = "application/x-www-form-urlencoded";
+
+			// Construct URL loader 
+			var loader:URLLoader = new URLLoader();
+			loader.dataFormat = URLLoaderDataFormat.TEXT;
+			loader.addEventListener(Event.COMPLETE, completeHandler);
+			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
 			
-			// looks like i'll need to use Loader here ?
+			// Load the request
+			try {
+				if (DEBUG) trace("Loading request "+request.url);
+				loader.load(request);
+			} catch (error:Error) {
+				if (DEBUG) trace("Unable to load requested document.");
+				response = new Response(false, "Internal Error!");
+				callback(response);
+				return;
+			}
 			
-			// Load request then callback
-			loadRequest(request, callback, onSuccess);
+			// Called when data is loaded successfully.
+			function completeHandler(event:Event):void 
+			{
+				var loader:URLLoader = URLLoader(event.target);
+				if (DEBUG) trace("completeHandler: " + loader.data);
+				
+				// Was an image attached?
+				var json:Object = convertAnyJSON(loader.data);
+				if (json.hasOwnProperty("image"))
+				{
+					if (DEBUG) trace("Cache: New image transmitted from server");
+					// Encode base64 image string into bytearray.
+					var data:ByteArray = Base64.decodeToByteArray(json.image);
+					// Convert byte array to image
+					usedCache = false;
+					convertToBitmap(data, onImageLoaded);
+				}
+					// No image attached, load cached image	
+				else if (bytes != null)
+				{
+					if (DEBUG) trace("Cache: Cached image up to date, using it");				
+					usedCache = true;
+					convertToBitmap(bytes, onImageLoaded);
+				} 
+					// Impossibru error
+				else 
+				{
+					response = new Response(false, "Internal error that should be impossible!");
+					callback(response);
+				}
+			}
 			
-			// Handle events.
-			function onSuccess(loader:URLLoader):Response {
-				// Convert the contents to displayable format
+			// Called when image has been converted from a byte array
+			function onImageLoaded(image:Bitmap):void
+			{
+				// Cache it?
+				if (!usedCache)
+					cacheImage(image, cacheProfileImageDir, userId);
+					
+				// Callback with image 
+				response = new Response(true, image);
+				callback(response);
+			}
+			
+			// Called when an error occurs for some reason, including a bad status code.
+			function ioErrorHandler(event:IOErrorEvent):void 
+			{				
+				var loader:URLLoader = URLLoader(event.target);
+				if (DEBUG) trace("ioErrorHandler: " + event + ", data: " + loader.data);
+				response = new Response(false, convertAnyJSON(loader.data));
+				callback(response);
+			}
+		}
+		
+		/**
+		 * Attempts to retrieve a resource's image.
+		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * @param resourceId	The resource's id
+		 * @param callback 		The function to call when the attempt is complete
+		 */
+		public static function getResourceImage(resourceId:String,
+											    callback:Function):void
+		{
+			var response:Response;
+			
+			// --- VALIDATION --------------------------------------------------------------------- 
+			
+			if (resourceId == null || resourceId.length == 0)
+				response = new Response(false, "Invalid resource id.");
+			
+			// Callback and abort if validation failed.
+			if (response != null && !response.isSuccess()) {
+				callback(response);
+				return;
+			}
+			
+			// --- REQUEST ------------------------------------------------------------------------
+			
+			// Get cached image bytes			
+			var bytes:ByteArray = getCachedImage(cacheResourceImageDir, resourceId);
+			var usedCache:Boolean = false;
+			var md5:String = null;
+			
+			// Not null: there is a cached image
+			if (bytes != null) 
+			{
+				// Determine md5
+				md5 = MD5.hashBinary(bytes);
+				if (DEBUG) trace("Cache: Found existing image for resourceId="+resourceId);
+			}
+			
+			// If image in content, 
+			//    use it
+			//    cache it
+			// If content blank,
+			//    use cached image
+			
+			// Create URL variables
+			var vars:URLVariables = new URLVariables();
+			if (md5 != null) vars.hash = md5;
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/getResourceImage/"+resourceId+"?"+vars.toString());
+			addAuthenticationHeader(request, null, null);
+			request.contentType = "application/x-www-form-urlencoded";
+			
+			// Construct URL loader 
+			var loader:URLLoader = new URLLoader();
+			loader.dataFormat = URLLoaderDataFormat.TEXT;
+			loader.addEventListener(Event.COMPLETE, completeHandler);
+			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+			
+			// Load the request
+			try {
+				if (DEBUG) trace("Loading request "+request.url);
+				loader.load(request);
+			} catch (error:Error) {
+				if (DEBUG) trace("Unable to load requested document.");
+				response = new Response(false, "Internal Error!");
+				callback(response);
+				return;
+			}
+			
+			// Called when data is loaded successfully.
+			function completeHandler(event:Event):void 
+			{
+				var loader:URLLoader = URLLoader(event.target);
+				if (DEBUG) trace("completeHandler: " + loader.data);
 				
-				// Replace loader's content
+				// Was an image attached?
+				var json:Object = convertAnyJSON(loader.data);
+				if (json.hasOwnProperty("image"))
+				{
+					if (DEBUG) trace("Cache: New image transmitted from server");
+					// Encode base64 image string into bytearray.
+					var data:ByteArray = Base64.decodeToByteArray(json.image);
+					// Convert byte array to image
+					usedCache = false;
+					convertToBitmap(data, onImageLoaded);
+				}
+				// No image attached, load cached image	
+				else if (bytes != null)
+				{
+					if (DEBUG) trace("Cache: Cached image up to date, using it");				
+					usedCache = true;
+					convertToBitmap(bytes, onImageLoaded);
+				} 
+				// Impossibru error
+				else 
+				{
+					response = new Response(false, "Internal error that should be impossible!");
+					callback(response);
+				}
+			}
+			
+			// Called when image has been converted from a byte array
+			function onImageLoaded(image:Bitmap):void
+			{
+				// Cache it?
+				if (!usedCache)
+					cacheImage(image, cacheResourceImageDir, userId);
 				
-				// Cache image TODO
-				
-				return null;
+				// Callback with image 
+				response = new Response(true, image);
+				callback(response);
+			}
+			
+			// Called when an error occurs for some reason, including a bad status code.
+			function ioErrorHandler(event:IOErrorEvent):void 
+			{				
+				var loader:URLLoader = URLLoader(event.target);
+				if (DEBUG) trace("ioErrorHandler: " + event + ", data: " + loader.data);
+				response = new Response(false, convertAnyJSON(loader.data));
+				callback(response);
 			}
 		}
 	}
