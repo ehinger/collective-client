@@ -2,7 +2,11 @@ package connectivity
 {
 	import com.adobe.crypto.MD5;
 	import com.adobe.images.JPGEncoder;
+	import com.adobe.utils.DateUtil;
 	import com.dynamicflash.util.Base64;
+	import com.flexoop.utilities.dateutils.DateUtils;
+	
+	import connectivity.Response;
 	
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
@@ -17,6 +21,7 @@ package connectivity
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
+	import flash.net.FileReference;
 	import flash.net.URLLoader;
 	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
@@ -25,10 +30,7 @@ package connectivity
 	import flash.net.URLVariables;
 	import flash.utils.ByteArray;
 	
-	import mx.utils.Base64Encoder;
 	import mx.utils.StringUtil;
-	
-	import connectivity.Response;
 	
 	/**
 	 * This class contains methods to wrap interactions with the server.
@@ -57,15 +59,17 @@ package connectivity
 		public static const RESOURCE_TYPE_PLANTS:String 	= "plants";
 		
 		// Image resizing: all uploaded images are resized to these dimensions.
-		private static const DESIRED_PROFILE_IMAGE_WIDTH:Number = 100.0;
-		private static const DESIRED_PROFILE_IMAGE_HEIGHT:Number = 100.0;
-		private static const DESIRED_RESOURCE_IMAGE_WIDTH:Number = 100.0;
-		private static const DESIRED_RESOURCE_IMAGE_HEIGHT:Number = 100.0;
+		private static const DESIRED_PROFILE_IMAGE_WIDTH:Number = 75.0;
+		private static const DESIRED_PROFILE_IMAGE_HEIGHT:Number = 145.0;
+		private static const DESIRED_RESOURCE_IMAGE_WIDTH:Number = 76.0;
+		private static const DESIRED_RESOURCE_IMAGE_HEIGHT:Number = 77.0;
 		
 		// Caching
 		private static var cacheProfileImageDir:File = null;
 		private static var cacheResourceImageDir:File = null;
+		private static var cacheTradeDir:File = null;
 		private static var setUp:Boolean = false;
+		private static var cacheMaxAgeWeeks:Number = 12;
 		
 		// Cached session info
 		private static var userId:String;
@@ -94,14 +98,34 @@ package connectivity
 			// This can only run once.
 			if (setUp) return;
 			setUp = true;
+			trace("ServerAccess: Setting up cache");
 			
 			// Define cache directories
 			cacheProfileImageDir = File.applicationStorageDirectory.resolvePath("profiles/");
 			cacheResourceImageDir = File.applicationStorageDirectory.resolvePath("resources/");
+			cacheTradeDir = File.applicationStorageDirectory.resolvePath("resources/");
 
 			// Create cache directories (nothing happens if they already exist)
 			cacheProfileImageDir.createDirectory();
 			cacheResourceImageDir.createDirectory();
+			cacheTradeDir.createDirectory();
+			
+			// Delete old images
+			var currentDate:Date = new Date();
+			try {
+				for each (var imageFile:File in cacheProfileImageDir.getDirectoryListing()
+					.concat(cacheResourceImageDir.getDirectoryListing()))
+				{
+					if (DateUtils.dateDiff(DateUtils.WEEK,imageFile.modificationDate, currentDate) 
+						> cacheMaxAgeWeeks)
+					{
+						trace("Cache: Deleting old file "+imageFile.nativePath);
+						imageFile.deleteFile();
+					}
+				}
+			} catch (error:Error) {
+				trace("Cache: Unable to delete old cached images");
+			}
 		}
 		
 		/**
@@ -121,9 +145,9 @@ package connectivity
 				stream.writeBytes(bytes);
 				stream.close();
 			} catch (error:Error) {
-				trace("Cache: Could not cache image");
+				if (DEBUG) trace("Cache: Could not cache image");
 			}
-			trace("Cache: Cached image to "+file.nativePath);
+			if (DEBUG) trace("Cache: Cached image to "+file.nativePath);
 		}
 		
 		/**
@@ -139,10 +163,45 @@ package connectivity
 				stream.readBytes(bytes);
 				stream.close();
 			} catch (error:Error) {
-				trace("Cache: Cached image unavailable. "+error.message);
+				if (DEBUG) trace("Cache: Cached image unavailable. "+error.message);
 				return null;
 			}
 			return bytes;
+		}
+		
+		/**
+		 * Caches the given trade (as a JSON string) at the given location under the given name.
+		 */
+		private static function cacheTrade(trade:String, dir:File, name:String):void
+		{
+			var file:File = dir.resolvePath(name+".dat");
+			var stream:FileStream = new FileStream();
+			try {
+				stream.open(file, FileMode.WRITE);
+				stream.writeUTF(trade);
+				stream.close();
+			} catch (error:Error) {
+				if (DEBUG) trace("Cache: Could not cache trade");
+			}
+			if (DEBUG) trace("Cache: Cached trade to "+file.nativePath);
+		}
+		
+		/**
+		 * Gets the cached trade (as a JSON string) with the given name, or null if doesn't exist.
+		 */
+		private static function getCachedTrade(dir:File, name:String):String
+		{
+			var file:File = dir.resolvePath(name+".dat");
+			var stream:FileStream = new FileStream();
+			var trade:String = null;
+			try {
+				stream.open(file, FileMode.READ);
+				trade = stream.readUTF();
+				stream.close();
+			} catch (error:Error) {
+				if (DEBUG) trace("Cache: Cached trade unavailable");
+			}
+			return trade;
 		}
 		
 		/**
@@ -150,16 +209,16 @@ package connectivity
 		 */
 		private static function cacheEmail(email:String):void 
 		{
-			var file:File = File.applicationStorageDirectory.resolvePath("lastlogin.txt");
+			var file:File = File.applicationStorageDirectory.resolvePath("lastlogin.dat");
 			var stream:FileStream = new FileStream();
 			try {
 				stream.open(file, FileMode.WRITE);
 				stream.writeUTF(email);
 				stream.close();
 			} catch (error:Error) {
-				trace("Cache: Could not cache last user email");
+				if (DEBUG) trace("Cache: Could not cache last user email");
 			}
-			trace("Cache: Cached email "+email);
+			if (DEBUG) trace("Cache: Cached email "+email);
 		}
 		
 		/**
@@ -167,7 +226,7 @@ package connectivity
 		 */
 		private static function getCachedEmail():String
 		{
-			var file:File = File.applicationStorageDirectory.resolvePath("lastlogin.txt");
+			var file:File = File.applicationStorageDirectory.resolvePath("lastlogin.dat");
 			var stream:FileStream = new FileStream();
 			var email:String = null;
 			try {
@@ -175,7 +234,7 @@ package connectivity
 				email = stream.readUTF();
 				stream.close();
 			} catch (error:Error) {
-				trace("Cache: Last user email not available");
+				if (DEBUG) trace("Cache: Last user email not available");
 			}
 			return email;
 		}
@@ -358,7 +417,7 @@ package connectivity
 			}
 			
 			function httpStatusHandler(event:HTTPStatusEvent):void {
-				trace("HTTP Status code: " + event.status);
+				if (DEBUG) trace("HTTP Status code: " + event.status);
 			}
 		}
 		
@@ -1163,10 +1222,7 @@ package connectivity
 			
 			// --- REQUEST ------------------------------------------------------------------------
 			
-			// Create URL variables -- this allows our fields to be placed as objects and then 
-			// sexily placed in our request's data.
-			// However, since we're doing a POST, we have to manually toString() it and put it onto
-			// the end of the url.
+			// Create URL variables 
 			var vars:URLVariables = new URLVariables();
 			vars.action = ACTION_ADD_MESSAGE;
 			
@@ -1174,7 +1230,7 @@ package connectivity
 			var request:URLRequest = 
 				new URLRequest(hostname+"/trades/"+tradeId+"/Actions?"+vars.toString());
 			addAuthenticationHeader(request, null, null);
-			request.contentType = "application/x-www-form-urlencoded+json";
+			request.contentType = "application/json";
 			
 			// Construct JSON body
 			var bodyObject:Object = {
@@ -1265,21 +1321,70 @@ package connectivity
 			
 			// --- REQUEST ------------------------------------------------------------------------
 			
-			// Create URL variables -- this allows our fields to be placed as objects and then 
-			// sexily placed in our request's data.
-			// However, since we're doing a POST, we have to manually toString() it and put it onto
-			// the end of the url.
-			//var vars:URLVariables = new URLVariables();
-			//vars.action = action; //TODO cache
+			// Get cached trade
+			var cachedTradeString:String = getCachedTrade(cacheTradeDir, tradeId);
+			var currVer:int;
+			var cachedTrade:Object;
+			if (cachedTradeString != null)
+			{
+				cachedTrade = convertAnyJSON(cachedTradeString);
+				currVer = cachedTrade.version;
+				if (DEBUG) trace("Cache: Trade found with version "+currVer);
+			}
+			
+			// Create URL variables 
+			var vars:URLVariables = new URLVariables();
+			vars.currVer = currVer; //TODO cache
 			
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/getTrade/"+tradeId);//+"/Actions?"+vars.toString());
+				new URLRequest(hostname+"/getTrade/"+tradeId
+					+(cachedTradeString==null?"":"?"+vars.toString()));
 			addAuthenticationHeader(request, null, null);
-			//request.contentType = "application/x-www-form-urlencoded";
+			request.contentType = "application/x-www-form-urlencoded";
 			
 			// Load request and callback.
-			loadRequest(request, callback);
+			loadRequest(request, callback, onSuccess, onFailure);
+			
+			// Handle events.
+			function onSuccess(loader:URLLoader):Response 
+			{
+				// Was a trade attached? Load it
+				var json:Object = convertAnyJSON(loader.data);
+				if (json.hasOwnProperty("_id"))
+				{
+					if (DEBUG) trace("Cache: New trade transmitted from server");
+					// Write trade to cache
+					cacheTrade(loader.data, cacheTradeDir, tradeId)
+					return new Response(true, json);
+				}
+				// No trade attached, load cached trade	
+				else if (cachedTrade != null)
+				{
+					if (DEBUG) trace("Cache: Cached trade up to date, using it");				
+					return new Response(true, cachedTrade);
+				} 
+				// Impossibru error
+				else 
+				{
+					return new Response(false, "Internal error that should be impossible!");
+				}
+			}
+				
+			function onFailure(loader:URLLoader):Response 
+			{				
+				// Cached data?  Use that.
+				if (cachedTrade != null)
+				{
+					if (DEBUG) trace("Cache: Failed to connect to server, using cached trade");				
+					return new Response(true, cachedTrade);
+				} 
+				// No cache: failure
+				else
+				{
+					return null;
+				}
+			}
 		}
 		
 		/**
@@ -1294,12 +1399,13 @@ package connectivity
 						
 			// --- REQUEST ------------------------------------------------------------------------
 			
-			// Create URL variables -- this allows our fields to be placed as objects and then 
-			// sexily placed in our request's data.
-			// However, since we're doing a POST, we have to manually toString() it and put it onto
-			// the end of the url.
-			//var vars:URLVariables = new URLVariables();
-			//vars.date = date; //TODO: date cache
+			// Get
+			
+			// Transmit url with 
+			
+			// Create URL variables 
+			var vars:URLVariables = new URLVariables();
+			vars.date = "TODO";
 			
 			// Construct URL request
 			var request:URLRequest = 
@@ -1553,8 +1659,20 @@ package connectivity
 			{				
 				var loader:URLLoader = URLLoader(event.target);
 				if (DEBUG) trace("ioErrorHandler: " + event + ", data: " + loader.data);
-				response = new Response(false, convertAnyJSON(loader.data));
-				callback(response);
+				
+				// Cached data?  Use that.
+				if (bytes != null)
+				{
+					if (DEBUG) trace("Cache: Failed to connect to server, using cached image");				
+					usedCache = true;
+					convertToBitmap(bytes, onImageLoaded);
+				} 
+				// No cache: failure
+				else
+				{
+					response = new Response(false, convertAnyJSON(loader.data));
+					callback(response);
+				}
 			}
 		}
 		
@@ -1678,8 +1796,20 @@ package connectivity
 			{				
 				var loader:URLLoader = URLLoader(event.target);
 				if (DEBUG) trace("ioErrorHandler: " + event + ", data: " + loader.data);
-				response = new Response(false, convertAnyJSON(loader.data));
-				callback(response);
+				
+				// Cached data?  Use that.
+				if (bytes != null)
+				{
+					if (DEBUG) trace("Cache: Failed to connect to server, using cached image");				
+					usedCache = true;
+					convertToBitmap(bytes, onImageLoaded);
+				} 
+					// No cache: failure
+				else
+				{
+					response = new Response(false, convertAnyJSON(loader.data));
+					callback(response);
+				}
 			}
 		}
 	}
