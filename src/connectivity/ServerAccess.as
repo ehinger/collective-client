@@ -6,8 +6,6 @@ package connectivity
 	import com.dynamicflash.util.Base64;
 	import com.flexoop.utilities.dateutils.DateUtils;
 	
-	import connectivity.Response;
-	
 	import flash.display.Bitmap;
 	import flash.display.BitmapData;
 	import flash.display.Loader;
@@ -32,6 +30,8 @@ package connectivity
 	
 	import mx.utils.StringUtil;
 	
+	import connectivity.Response;
+	
 	/**
 	 * This class contains methods to wrap interactions with the server.
 	 */
@@ -45,6 +45,7 @@ package connectivity
 		
 		// Actions
 		public static const ACTION_ADD_MESSAGE:String 		= "add_message";
+		public static const ACTION_ADD_REVIEW:String 		= "add_review";
 		public static const ACTION_ACCEPT:String	 		= "accept";
 		public static const ACTION_DECLINE:String 			= "decline";
 		public static const ACTION_CANCEL:String 			= "cancel";
@@ -89,43 +90,62 @@ package connectivity
 		// ========================================================================================
 		
 		/**
-		 * Sets up ServerAccess.
-		 * - Determines if caching is possible and sets it up if so
-		 * - Reads last user's email who logged in
+		 * Sets up caching directories and removes expired files.
 		 */
-		private static function setup():void
+		private static function setUpCaching(userId:String):void
 		{
-			// This can only run once.
-			if (setUp) return;
-			setUp = true;
-			trace("ServerAccess: Setting up cache");
+			trace("ServerAccess: Setting up cache for userId "+userId);
 			
 			// Define cache directories
 			cacheProfileImageDir = File.applicationStorageDirectory.resolvePath("profiles/");
 			cacheResourceImageDir = File.applicationStorageDirectory.resolvePath("resources/");
-			cacheTradeDir = File.applicationStorageDirectory.resolvePath("resources/");
+			cacheTradeDir = File.applicationStorageDirectory.resolvePath("users/"+userId+"/");
 
 			// Create cache directories (nothing happens if they already exist)
 			cacheProfileImageDir.createDirectory();
 			cacheResourceImageDir.createDirectory();
 			cacheTradeDir.createDirectory();
 			
-			// Delete old images
+			// Delete old cache data
 			var currentDate:Date = new Date();
 			try {
-				for each (var imageFile:File in cacheProfileImageDir.getDirectoryListing()
-					.concat(cacheResourceImageDir.getDirectoryListing()))
+				// Assemble list of cached files
+				var files:Array = cacheProfileImageDir.getDirectoryListing()
+								  .concat(cacheResourceImageDir.getDirectoryListing())
+								  .concat(cacheTradeDir.getDirectoryListing());
+				// Go through each file and delete them if they're past expiry date
+				for each (var file:File in files)
 				{
-					if (DateUtils.dateDiff(DateUtils.WEEK,imageFile.modificationDate, currentDate) 
+					if (DateUtils.dateDiff(DateUtils.WEEK,file.modificationDate, currentDate) 
 						> cacheMaxAgeWeeks)
 					{
-						trace("Cache: Deleting old file "+imageFile.nativePath);
-						imageFile.deleteFile();
+						trace("Cache: Deleting old file "+file.nativePath);
+						file.deleteFile();
 					}
 				}
 			} catch (error:Error) {
-				trace("Cache: Unable to delete old cached images");
+				trace("Cache: Unable to delete old cached files");
 			}
+		}
+		
+		/**
+		 * Gets the latest file modification date of all files in the given directory,
+		 * or null if there are no files.
+		 */
+		private static function getFreshestCachedFileDate(dir:File):Date 
+		{
+			var latestDate:Date = null;
+			for each (var file:File in dir.getDirectoryListing())
+			{
+				// Is the latest date behind the modification date?
+				if (latestDate == null || 
+					DateUtils.dateDiff(DateUtils.SECONDS,file.modificationDate, latestDate) < 0)
+				{
+					// All hail the new latest date
+					latestDate = file.modificationDate;
+				}
+			}
+			return latestDate;
 		}
 		
 		/**
@@ -202,6 +222,27 @@ package connectivity
 				if (DEBUG) trace("Cache: Cached trade unavailable");
 			}
 			return trade;
+		}
+		
+		/**
+		 * Gets the all cached trades (as an array of JSON objects) in the given dir.
+		 */
+		private static function getCachedTrades(dir:File):Array
+		{
+			var trades:Array = new Array();
+			var stream:FileStream = new FileStream();
+			try {
+				for each (var file:File in dir.getDirectoryListing())
+				{
+					stream.open(file, FileMode.READ);
+					trades.push(convertAnyJSON(stream.readUTF()));
+					stream.close();
+				}
+			} catch (error:Error) {
+				if (DEBUG) trace("Cache: Cached trades unavailable");
+				trades = new Array();
+			}
+			return trades;
 		}
 		
 		/**
@@ -293,7 +334,7 @@ package connectivity
 		
 		/**
 		 * Adds an authentication header to the given request, as well as setting the request
-		 * method to POST (required due to AS3 limitation) and settings its data to an empty
+		 * method to POST (required due to AS3 limitation) and setting its data to an empty
 		 * json body "{}" (also due to AS3 limitation).
 		 * 
 		 * If email is null then it attempts to use cached settings, in which case the 
@@ -381,6 +422,7 @@ package connectivity
 
 			// Called when data is loaded successfully.
 			function completeHandler(event:Event):void {
+				
 				var loader:URLLoader = URLLoader(event.target);
 				if (DEBUG) trace("completeHandler: " + loader.data);
 				
@@ -620,9 +662,6 @@ package connectivity
 											password:String, 
 											callback:Function):void
 		{
-			// First time setup
-			if (!setUp) setup();
-			
 			var response:Response;
 			
 			// --- VALIDATION --------------------------------------------------------------------- 
@@ -648,13 +687,19 @@ package connectivity
 			
 			// Handle events.
 			function onSuccess(loader:URLLoader):Response {
+				
 				// Save the user id for this session
 				var data:Object = convertAnyJSON(loader.data);
 				ServerAccess.userId = data._id;
 				ServerAccess.email = email;
 				ServerAccess.password = password;
+				
+				// Set up caching for this ID
+				setUpCaching(data._id);
+				
 				// Cache the email
 				cacheEmail(email);
+				
 				return null;
 			}
 		}
@@ -819,19 +864,22 @@ package connectivity
 			
 			// --- REQUEST ------------------------------------------------------------------------
 						
+			// Create URL variables 
+			var vars:URLVariables = new URLVariables();
+			vars.action = ACTION_ADD_REVIEW;
+			
+			// Construct URL request
+			var request:URLRequest = 
+				new URLRequest(hostname+"/performTradeAction/"+tradeId+"?"+vars.toString());
+			addAuthenticationHeader(request, null, null);
+						
 			// Construct JSON body
 			var bodyObject:Object = {
 				score:score,
 				message:message
 			};
-			var body:String = JSON.stringify(bodyObject);
-			
-			// Construct URL request
-			var request:URLRequest = 
-				new URLRequest(hostname+"/users/"+userId+"/trades/"+tradeId+"/reviews");
-			addAuthenticationHeader(request, null, null); // Assume cached info exists.
-			request.data = body;
-			
+			request.data = JSON.stringify(bodyObject);
+						
 			// Load request and callback.
 			loadRequest(request, callback);
 		}
@@ -901,7 +949,7 @@ package connectivity
 			
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/users/"+userId+"/addResource");
+				new URLRequest(hostname+"/addResource");
 			addAuthenticationHeader(request, null, null);
 			request.data = body;
 			
@@ -970,7 +1018,7 @@ package connectivity
 			
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/users/"+userId+"/getResources");
+				new URLRequest(hostname+"/getUsersResources/"+userId);
 			addAuthenticationHeader(request, null, null);
 			
 			// Load request and callback.
@@ -1180,14 +1228,8 @@ package connectivity
 			
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/addTrade");
+				new URLRequest(hostname+"/requestNewTrade/"+resourceId);
 			addAuthenticationHeader(request, null, null);
-			
-			// Construct JSON body
-			var bodyObject:Object = {
-				resourceId:resourceId
-			};
-			request.data = JSON.stringify(bodyObject);
 			
 			// Load request and callback.
 			loadRequest(request, callback);
@@ -1228,7 +1270,7 @@ package connectivity
 			
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/trades/"+tradeId+"/Actions?"+vars.toString());
+				new URLRequest(hostname+"/performTradeAction/"+tradeId+"?"+vars.toString());
 			addAuthenticationHeader(request, null, null);
 			request.contentType = "application/json";
 			
@@ -1279,18 +1321,14 @@ package connectivity
 			
 			// --- REQUEST ------------------------------------------------------------------------
 			
-			// Create URL variables -- this allows our fields to be placed as objects and then 
-			// sexily placed in our request's data.
-			// However, since we're doing a POST, we have to manually toString() it and put it onto
-			// the end of the url.
+			// Create URL variables 
 			var vars:URLVariables = new URLVariables();
 			vars.action = action;
 			
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/trades/"+tradeId+"/Actions?"+vars.toString());
+				new URLRequest(hostname+"/performTradeAction/"+tradeId+"?"+vars.toString());
 			addAuthenticationHeader(request, null, null);
-			request.contentType = "application/x-www-form-urlencoded";
 			
 			// Load request and callback.
 			loadRequest(request, callback);
@@ -1299,6 +1337,9 @@ package connectivity
 		/**
 		 * Attempts to get a trade by its tradeid.
 		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * <p>Should the connection fail for any reason, this method will try to get the trade
+		 * from the cache. If there is no trade, this method will report failure in its response.
 		 * 
 		 * @param tradeId	The id of the trade
 		 * @param callback 	The function to call when the attempt is complete
@@ -1391,6 +1432,9 @@ package connectivity
 		 * Attempts to get the trades belonging to the current user.
 		 * <br>Requires that authenticate() have been called at least once.
 		 * 
+		 * <p>Should the connection fail for any reason, this method will try to get the trades 
+		 * from the cache. If there are no trades, this method will report failure in its response.
+		 * 
 		 * @param callback 	The function to call when the attempt is complete
 		 */
 		public static function getTrades(callback:Function):void 
@@ -1399,22 +1443,73 @@ package connectivity
 						
 			// --- REQUEST ------------------------------------------------------------------------
 			
-			// Get
-			
-			// Transmit url with 
-			
-			// Create URL variables 
+			// Create URL variables, get latest modified trade date and convert to ISO8601 format
+			var latestDate:Date = getFreshestCachedFileDate(cacheTradeDir);
 			var vars:URLVariables = new URLVariables();
-			vars.date = "TODO";
+			if (latestDate != null)	vars.date = DateUtil.toW3CDTF(latestDate);
 			
 			// Construct URL request
 			var request:URLRequest = 
-				new URLRequest(hostname+"/users/"+userId+"/getTrades");//?"+vars.toString());
+				new URLRequest(hostname+"/getUsersTrades/"+userId
+					+(latestDate==null?"":"?"+vars.toString()));
 			addAuthenticationHeader(request, null, null);
-			//request.contentType = "application/x-www-form-urlencoded";
 			
 			// Load request and callback.
-			loadRequest(request, callback);
+			loadRequest(request, callback, onSuccess, onFailure);
+			
+			// Handle events.
+			function onSuccess(loader:URLLoader):Response 
+			{
+				// Were any trades attached? 
+				var json:Object = convertAnyJSON(loader.data);
+				if (json.hasOwnProperty("length") && json.length > 0)
+				{
+					if (DEBUG) trace("Cache: New trades transmitted from server");
+					
+					// Cache each trade
+					for each (var trade:Object in json)
+					{
+						var tradeAsString:String = JSON.stringify(trade);
+						cacheTrade(tradeAsString, cacheTradeDir, trade._id)
+					}
+					
+					// Get all cached trades for this user
+					var allTrades:Array = getCachedTrades(cacheTradeDir);
+					if (allTrades.length > 0) 
+					{
+						return new Response(true, allTrades);
+					}					
+					// No cached trades? This is possible if caching failed. Return the 
+					// transmitted trades.
+					else
+					{
+						return new Response(true, json);
+					}
+				}
+				// No trade attached, load cached trades
+				else 
+				{
+					if (DEBUG) trace("Cache: Cached trades up to date, using them");
+					var cachedTrades:Array = getCachedTrades(cacheTradeDir);
+					return new Response(true, cachedTrades);
+				} 
+			}
+			
+			function onFailure(loader:URLLoader):Response 
+			{				
+				// Cached data?  Use that.
+				var cachedTrades:Array = getCachedTrades(cacheTradeDir);
+				if (cachedTrades.length > 0)
+				{
+					if (DEBUG) trace("Cache: Failed to connect to server, using cached trade");				
+					return new Response(true, cachedTrades);
+				} 
+				// No cache: failure
+				else
+				{
+					return null;
+				}
+			}
 		}
 		
 		/**
@@ -1549,6 +1644,9 @@ package connectivity
 		 * Attempts to retrieve a user's profile image.
 		 * <br>Requires that authenticate() have been called at least once.
 		 * 
+		 * <p>Should the connection fail for any reason, this method will try to get the image 
+		 * from the cache. If there is no image, this method will report failure in its response.
+		 * 
 		 * @param userId	The user's id
 		 * @param callback 	The function to call when the attempt is complete
 		 */
@@ -1679,6 +1777,9 @@ package connectivity
 		/**
 		 * Attempts to retrieve a resource's image.
 		 * <br>Requires that authenticate() have been called at least once.
+		 * 
+		 * <p>Should the connection fail for any reason, this method will try to get the image 
+		 * from the cache. If there is no image, this method will report failure in its response.
 		 * 
 		 * @param resourceId	The resource's id
 		 * @param callback 		The function to call when the attempt is complete
