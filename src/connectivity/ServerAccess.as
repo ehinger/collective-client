@@ -11,6 +11,7 @@ package connectivity
 	import flash.display.Loader;
 	import flash.display.PixelSnapping;
 	import flash.events.Event;
+	import flash.events.HTTPStatusEvent;
 	import flash.events.IOErrorEvent;
 	import flash.filesystem.File;
 	import flash.filesystem.FileMode;
@@ -18,6 +19,7 @@ package connectivity
 	import flash.geom.Matrix;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
+	import flash.net.FileReference;
 	import flash.net.URLLoader;
 	import flash.net.URLLoaderDataFormat;
 	import flash.net.URLRequest;
@@ -31,58 +33,13 @@ package connectivity
 	import connectivity.Response;
 	
 	/**
-	 * <b>IMPORTANT: Always call authenticate() before calling ANY method that says it requires
-	 * authentication!</b>
-	 * 
-	 * <p>This class contains methods to wrap interactions with the server and hide as much of the
-	 * internals of networking from the rest of the client as is possible.  Most of its methods
-	 * wrap a single type of interaction with the server, which consists of a request and a 
-	 * response.  An example of use is
-	 * 
-	 * <p><i>ServerAccess.authenticate("example@gmail.com","password",callback)</i>
-	 * 
-	 * <p>where callback is a reference to a function of your design.  As its name implies, this
-	 * function is called when the request has been fulfilled, either successfuly or no.  It is
-	 * passed one argument of type <b>Response</b>.  So using this event-driven function, users 
-	 * of this library may determine if their request was successful and deal with the data if so, 
-	 * or the error message if not.  
-	 * 
-	 * <p>The Response object will have several methods to assist, such as 
-	 * <br>isSuccess() which returns true if the operation was a success, 
-	 * <br>getType() which returns a string (Response.TYPE_*) defining the type of data attached to
-	 * it, and the most important
-	 * <br>getData(), which gets the data the server has sent.  This data could be an object with 
-	 * nested properties, a Bitmap image, or a string containing a message (usually only in the 
-	 * case of an error), depending on the context.
-	 * 
-	 * <p>Under successful conditions, typically the requested data is attached to the response as
-	 * an object with (potentially nested) properties, or an array of these objects, depending on
-	 * the request. For example,
-	 * 
-	 * <p><i>response.getData().borrower.firstName</i>
-	 * 
-	 * <p>will get the borrower's name from a Trade that has been successfully delivered.  To see
-	 * a complete and up-to-date list of the structure of this data, visit this URL:
-	 * 
-	 * <p><b>https://github.com/isabel12/collective-nodejs-server/blob/master/README.md</b> 
-	 * 
-	 * <p>Trades and Images are cached on the client behind the scenes, and will only be retrieved
-	 * from the server if the server indicates that they are out of date or they are new.  In
-	 * addition, should a request to the server fail for any reason in the presence of cached data,
-	 * a successful Response may be passed containing that cached data, for offline viewing.  User
-	 * profiles also benefit from this "offline mode" caching, though profiles aren't cached in
-	 * terms of data transfer savings.
-	 * 
-	 * <p>Finally, a couple of helper methods exist, such as one that remembers the last user's 
-	 * email and one that retrieves the current user's UserID, to make life easier.
-	 * 
-	 * @author Thomas Norman
+	 * This class contains methods to wrap interactions with the server.
 	 */
 	public class ServerAccess
 	{		
 		// Debug mode?
 		private static const DEBUG:Boolean = true;
-
+		
 		// URL to server
 		public static const hostname:String = "https://nodejs-collective-server.herokuapp.com";
 		
@@ -112,7 +69,6 @@ package connectivity
 		private static var cacheProfileImageDir:File = null;
 		private static var cacheResourceImageDir:File = null;
 		private static var cacheTradeDir:File = null;
-		private static var cacheUserDir:File = null;
 		private static var setUp:Boolean = false;
 		private static var cacheMaxAgeWeeks:Number = 12;
 		
@@ -122,8 +78,7 @@ package connectivity
 		private static var password:String;
 		
 		/**
-		 * Constructor: not used, as this is intended to be a 100% static class.
-		 * Throws an error if instantiated.
+		 * Constructor 
 		 */
 		public function ServerAccess()
 		{
@@ -131,7 +86,7 @@ package connectivity
 		}
 		
 		// ========================================================================================
-		// INTERNAL FUNCTIONS: CACHING
+		// INTERNAL FUNCTIONS
 		// ========================================================================================
 		
 		/**
@@ -145,13 +100,11 @@ package connectivity
 			cacheProfileImageDir = File.applicationStorageDirectory.resolvePath("profiles/");
 			cacheResourceImageDir = File.applicationStorageDirectory.resolvePath("resources/");
 			cacheTradeDir = File.applicationStorageDirectory.resolvePath("users/"+userId+"/");
-			cacheUserDir = File.applicationStorageDirectory.resolvePath("users/");
 
 			// Create cache directories (nothing happens if they already exist)
 			cacheProfileImageDir.createDirectory();
 			cacheResourceImageDir.createDirectory();
 			cacheTradeDir.createDirectory();
-			cacheUserDir.createDirectory();
 			
 			// Delete old cache data
 			var currentDate:Date = new Date();
@@ -159,13 +112,11 @@ package connectivity
 				// Assemble list of cached files
 				var files:Array = cacheProfileImageDir.getDirectoryListing()
 								  .concat(cacheResourceImageDir.getDirectoryListing())
-								  .concat(cacheTradeDir.getDirectoryListing()
-								  .concat(cacheUserDir.getDirectoryListing()));
+								  .concat(cacheTradeDir.getDirectoryListing());
 				// Go through each file and delete them if they're past expiry date
 				for each (var file:File in files)
 				{
-					if (!file.isDirectory
-						&& DateUtils.dateDiff(DateUtils.WEEK,file.modificationDate, currentDate) 
+					if (DateUtils.dateDiff(DateUtils.WEEK,file.modificationDate, currentDate) 
 						> cacheMaxAgeWeeks)
 					{
 						trace("Cache: Deleting old file "+file.nativePath);
@@ -237,40 +188,40 @@ package connectivity
 			}
 			return bytes;
 		}
-				
+		
 		/**
-		 * Caches the given data (as a JSON string) at the given location under the given name.
+		 * Caches the given trade (as a JSON string) at the given location under the given name.
 		 */
-		private static function cacheData(data:String, dir:File, name:String):void
+		private static function cacheTrade(trade:String, dir:File, name:String):void
 		{
 			var file:File = dir.resolvePath(name+".dat");
 			var stream:FileStream = new FileStream();
 			try {
 				stream.open(file, FileMode.WRITE);
-				stream.writeUTF(data);
+				stream.writeUTF(trade);
 				stream.close();
 			} catch (error:Error) {
-				if (DEBUG) trace("Cache: Could not cache data");
+				if (DEBUG) trace("Cache: Could not cache trade");
 			}
-			if (DEBUG) trace("Cache: Cached data to "+file.nativePath);
+			if (DEBUG) trace("Cache: Cached trade to "+file.nativePath);
 		}
 		
 		/**
-		 * Gets the cached data (as a JSON string) with the given name, or null if doesn't exist.
+		 * Gets the cached trade (as a JSON string) with the given name, or null if doesn't exist.
 		 */
-		private static function getCachedData(dir:File, name:String):String
+		private static function getCachedTrade(dir:File, name:String):String
 		{
 			var file:File = dir.resolvePath(name+".dat");
 			var stream:FileStream = new FileStream();
-			var data:String = null;
+			var trade:String = null;
 			try {
 				stream.open(file, FileMode.READ);
-				data = stream.readUTF();
+				trade = stream.readUTF();
 				stream.close();
 			} catch (error:Error) {
-				if (DEBUG) trace("Cache: Cached data unavailable");
+				if (DEBUG) trace("Cache: Cached trade unavailable");
 			}
-			return data;
+			return trade;
 		}
 		
 		/**
@@ -329,10 +280,6 @@ package connectivity
 			return email;
 		}
 		
-		// ========================================================================================
-		// INTERNAL FUNCTIONS: VALIDATION / CONVERSION
-		// ========================================================================================
-		
 		// from le nets java2s.com
 		private static function toTitleCase( original:String ):String {
 			var words:Array = original.split( " " );
@@ -365,40 +312,155 @@ package connectivity
 			return converted;
 		}
 	
-		/**
-		 * Returns true if the given latitude and longitude represents an invalid location
-		 * on earth.
-		 */
 		private static function isInvalidLocation(lat:Number, lon:Number):Boolean 
 		{
 			return (lat < -90 || lat > 90 || lon < -180 || lon > 180);
 		}
 		
-		/**
-		 * Returns true if the given email is formatted incorrectly, but does not check its 
-		 * validity otherwise.
-		 */
 		private static function isInvalidEmail(email:String):Boolean 
 		{
 			return (!email.match(/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}$/));
 		}
 		
-		/**
-		 * Returns true if the given city is formatted incorrectly, but does not check its 
-		 * validity otherwise.
-		 */
 		private static function isInvalidCity(city:String):Boolean 
 		{
 			return !city.match(/^[A-Za-z]{3,20}\ ?([A-Za-z]{3,20})?$/);
 		}
 		
-		/**
-		 * Returns true if the given postcode is formatted incorrectly, but does not check its 
-		 * validity otherwise.
-		 */
 		private static function isInvalidPostcode(postcode:String):Boolean 
 		{
 			return !postcode.match(/^[1-9][0-9]{3}$/);
+		}
+		
+		/**
+		 * Adds an authentication header to the given request, as well as setting the request
+		 * method to POST (required due to AS3 limitation) and setting its data to an empty
+		 * json body "{}" (also due to AS3 limitation).
+		 * 
+		 * If email is null then it attempts to use cached settings, in which case the 
+		 * authenticate() method MUST have already been run at least once to flesh out the cache.
+		 */
+		private static function addAuthenticationHeader(request:URLRequest, email:String, 
+														password:String):void
+		{
+			// Get cached info if email null
+			if (email == null) 	
+			{
+				if (ServerAccess.email == null || ServerAccess.password == null)
+				{
+					throw new Error("addAuthenticationHeader: no authentication info supplied. " +
+						"authenticate() needs to be called before calling most methods!");
+				}
+				email = ServerAccess.email;
+				password = ServerAccess.password;
+			}
+			
+			/*
+				So an awesome thing about Adobe Air: you can't use authorisation headers in GET 
+				requests. Why? "browser limitations". Fucked if I know what that means.  Therefore
+				we need to use POST whenever an authorisation header is used, yay.
+			*/
+			request.method = URLRequestMethod.POST;
+			
+			// Encode the email+password into a base64 string
+			var header:String = Base64.encode(email+":"+password);
+			
+			// Include it in an Authorization header and attach it to the request. 
+			var credsHeader:URLRequestHeader = 
+				new URLRequestHeader("Authorization", "Basic " + header);
+			request.requestHeaders.push(credsHeader);
+			
+			// Dirty hack time!  Because this is a dirty language...   
+			// POST requests without data are converted to GET. Why? No fucking good reason that I
+			// can see. :|
+			request.data = "{}";
+			request.contentType = "application/json";
+			// If any data actually needs to be posted, it needs to be set after this is called.
+		}
+		
+		/**
+		 * Provides a standard way to load a URLRequest.  This function will load the request
+		 * and callback with an appropriate Response containing the data from the server, converted
+		 * to a JSON object tree if applicable.  
+		 * 
+		 * <p>It also allows for onSuccess and onFailure functions. These are given the loader as
+		 * their sole argument and can optionally return a Response, which will be used in the 
+		 * callback if present.
+		 */
+		private static function loadRequest(request:URLRequest,
+											callback:Function, 
+											onSuccess:Function = null, 
+											onFailure:Function = null,
+											binary:Boolean=false):void
+		{
+			var response:Response;
+			
+			// Construct URL loader 
+			var loader:URLLoader = new URLLoader();
+			loader.dataFormat = URLLoaderDataFormat.TEXT;
+			loader.addEventListener(Event.COMPLETE, completeHandler);
+			loader.addEventListener(IOErrorEvent.IO_ERROR, ioErrorHandler);
+			loader.addEventListener(HTTPStatusEvent.HTTP_RESPONSE_STATUS, httpStatusHandler);
+			if (binary)
+				loader.dataFormat = URLLoaderDataFormat.BINARY;
+			
+			// Load the request
+			try {
+				// This loads the request asynchronously. Event functions will fire
+				// as appropriate.
+				if (DEBUG) trace("Loading request "+request.url);
+				loader.load(request);
+			} catch (error:Error) {
+				// The errors that can be thrown are not tied to the server's responses
+				// but are rather things like out of memory, syntax errors, etc. so we
+				// can consider these to be rare occurrences.
+				if (DEBUG) trace("Unable to load requested document.");
+				response = new Response(false, "Internal Error!");
+				callback(response);
+				return;
+			}
+
+			// Called when data is loaded successfully.
+			function completeHandler(event:Event):void {
+				
+				var loader:URLLoader = URLLoader(event.target);
+				if (DEBUG) trace("completeHandler: " + loader.data);
+				
+				// Call onSuccess function
+				if (onSuccess != null)
+					response = onSuccess(loader);
+				
+				// Callback function: pass response indicating success along with the data, if any.
+				if (callback != null)
+				{
+					if (response == null)
+						response = new Response(true, convertAnyJSON(loader.data));
+					callback(response);
+				}
+			}
+			
+			// Called when an error occurs for some reason, including a bad status code.
+			// This event doesn't contain the status code for some messed up reason.
+			function ioErrorHandler(event:IOErrorEvent):void {				
+				var loader:URLLoader = URLLoader(event.target);
+				if (DEBUG) trace("ioErrorHandler: " + event + ", data: " + loader.data);				
+				
+				// Call onFailure function
+				if (onFailure != null)
+					response = onFailure(loader);
+				
+				// Callback function: pass response indicating failure along with the data, if any.
+				if (callback != null)
+				{
+					if (response == null)
+						response = new Response(false, convertAnyJSON(loader.data));
+					callback(response);
+				}
+			}
+			
+			function httpStatusHandler(event:HTTPStatusEvent):void {
+				if (DEBUG) trace("HTTP Status code: " + event.status);
+			}
 		}
 		
 		/**
@@ -481,158 +543,6 @@ package connectivity
 			croppedBD.copyPixels(sourceBitmapData, new Rectangle(startPoint.x, startPoint.y, width, height), new Point(0, 0));
 			return croppedBD.clone();
 			croppedBD.dispose();
-		}
-		
-		// ========================================================================================
-		// INTERNAL FUNCTIONS: HTTP HELPERS
-		// ========================================================================================
-		
-		/**
-		 * Adds an authentication header to the given request, as well as setting the request
-		 * method to POST (required due to AS3 limitation) and setting its data to an empty
-		 * json body "{}" (also due to AS3 limitation).
-		 * 
-		 * If email is null then it attempts to use cached settings, in which case the 
-		 * authenticate() method MUST have already been run at least once to flesh out the cache.
-		 */
-		private static function addAuthenticationHeader(request:URLRequest, email:String, 
-														password:String):void
-		{
-			// Get cached info if email null
-			if (email == null) 	
-			{
-				if (ServerAccess.email == null || ServerAccess.password == null)
-				{
-					throw new Error("addAuthenticationHeader: no authentication info supplied. " +
-						"authenticate() needs to be called before calling most methods!");
-				}
-				email = ServerAccess.email;
-				password = ServerAccess.password;
-			}
-			
-			/*
-				So an awesome thing about Adobe Air: you can't use authorisation headers in GET 
-				requests. Why? "browser limitations". Fucked if I know what that means.  Therefore
-				we need to use POST whenever an authorisation header is used, yay.
-			*/
-			request.method = URLRequestMethod.POST;
-			
-			// Encode the email+password into a base64 string
-			var header:String = Base64.encode(email+":"+password);
-			
-			// Include it in an Authorization header and attach it to the request. 
-			var credsHeader:URLRequestHeader = 
-				new URLRequestHeader("Authorization", "Basic " + header);
-			request.requestHeaders.push(credsHeader);
-			
-			// Dirty hack time!  Because this is a dirty language...   
-			// POST requests without data are converted to GET. Why? No fucking good reason that I
-			// can see. :|
-			request.data = "{}";
-			request.contentType = "application/json";
-			// If any data actually needs to be posted, it needs to be set after this is called.
-		}
-		
-		/**
-		 * Provides a standard way to load a URLRequest.  This function will load the request
-		 * and callback with an appropriate Response containing the data from the server, converted
-		 * to a JSON object tree if applicable.  
-		 * 
-		 * <p>It also allows for onSuccess and onFailure functions. These are given the loader as
-		 * their sole argument and can optionally return a Response, which will be used in the 
-		 * callback if present.
-		 */
-		private static function loadRequest(request:URLRequest,
-											callback:Function, 
-											onSuccessHook:Function = null, 
-											onFailureHook:Function = null,
-											binary:Boolean=false):void
-		{
-			var response:Response;
-			
-			// Construct URL loader 
-			var loader:URLLoader = new URLLoader();
-			// Determind data format
-			if (binary)
-				loader.dataFormat = URLLoaderDataFormat.BINARY;
-			else
-				loader.dataFormat = URLLoaderDataFormat.TEXT;
-			
-			// Attach handlers
-			loader.addEventListener(Event.COMPLETE, onSuccess);
-			loader.addEventListener(IOErrorEvent.IO_ERROR, onFailure);
-			
-			/*
-				AS3 bug(?): 
-				The addition of the HTTP_RESPONSE_STATUS event made Event.COMPLETE always fire,
-				never the error event.  So Error codes like 403 and 404 were being registered by
-				this method to be successful transmissions. This behaviour is never mentioned in
-				the documentation, in fact, I found the opposite to be true:
-			
-					"Note that the httpResponseStatus event (if any) will be sent before (and in 
-					addition to) any complete or error event."
-			
-				Adobe blows chunks.
-			*/
-			//loader.addEventListener(HTTPStatusEvent.HTTP_RESPONSE_STATUS, httpStatusHandler);
-			
-			// Load the request
-			try {
-				// This loads the request asynchronously. Event functions will fire
-				// as appropriate.
-				if (DEBUG) trace("Loading request "+request.url);
-				loader.load(request);
-			} catch (error:Error) {
-				// The errors that can be thrown are not tied to the server's responses
-				// but are rather things like out of memory, syntax errors, etc. so we
-				// can consider these to be rare occurrences.
-				if (DEBUG) trace("Unable to load requested document.");
-				response = new Response(false, "Internal Error!");
-				callback(response);
-				return;
-			}
-
-			// Called when data is loaded successfully.
-			function onSuccess(event:Event):void {
-				
-				var loader:URLLoader = URLLoader(event.target);
-				if (DEBUG) trace("Success: " + loader.data);
-				
-				// Call onSuccess function
-				if (onSuccessHook != null)
-					response = onSuccessHook(loader);
-				
-				// Callback function: pass response indicating success along with the data, if any.
-				if (callback != null)
-				{
-					if (response == null)
-						response = new Response(true, convertAnyJSON(loader.data));
-					callback(response);
-				}
-			}
-			
-			// Called when an error occurs for some reason, including a bad status code.
-			// This event doesn't contain the status code for some messed up reason.
-			function onFailure(event:IOErrorEvent):void {				
-				var loader:URLLoader = URLLoader(event.target);
-				if (DEBUG) trace("Failed: " + loader.data);				
-				
-				// Call onFailure function
-				if (onFailureHook != null)
-					response = onFailureHook(loader);
-				
-				// Callback function: pass response indicating failure along with the data, if any.
-				if (callback != null)
-				{
-					if (response == null)
-						response = new Response(false, convertAnyJSON(loader.data));
-					callback(response);
-				}
-			}
-			
-			/*function httpStatusHandler(event:HTTPStatusEvent):void {
-				if (DEBUG) trace("HTTP Status code: " + event.status);
-			} This is why we can't have nice things.*/
 		}
 				
 		// ========================================================================================
@@ -790,10 +700,6 @@ package connectivity
 				// Cache the email
 				cacheEmail(email);
 				
-				// Cache retrieved profile
-				var json:Object = convertAnyJSON(loader.data);
-				cacheData(loader.data, cacheUserDir, data._id)
-				
 				return null;
 			}
 		}
@@ -826,35 +732,10 @@ package connectivity
 			// Construct URL request
 			var request:URLRequest = new URLRequest(hostname + "/getProfile/"+userId);
 			addAuthenticationHeader(request, null, null); // Assume cached info exists.	
+			request.contentType = "application/json";
 			
 			// Load request and callback.
-			loadRequest(request, callback, onSuccess, onFailure);
-			
-			// Handle events.
-			function onSuccess(loader:URLLoader):Response 
-			{
-				// Cache retrieved profile
-				var json:Object = convertAnyJSON(loader.data);
-				cacheData(loader.data, cacheUserDir, json._id)
-				return null;
-			}
-			
-			function onFailure(loader:URLLoader):Response 
-			{				
-				// Cached data?  Use that.
-				var cachedString:String = getCachedData(cacheUserDir, userId);
-				if (cachedString != null)
-				{
-					var cachedObject:Object = convertAnyJSON(cachedString);
-					if (DEBUG) trace("Cache: Failed to connect to server, using cached profile");
-					return new Response(true, cachedObject);
-				} 
-				// No cache: failure
-				else
-				{
-					return null;
-				}
-			}
+			loadRequest(request, callback);
 		}
 		
 		/**
@@ -1351,19 +1232,7 @@ package connectivity
 			addAuthenticationHeader(request, null, null);
 			
 			// Load request and callback.
-			loadRequest(request, callback, onSuccess);
-			
-			// Handle events.
-			function onSuccess(loader:URLLoader):Response 
-			{
-				// Cache retrieved trade
-				var json:Object = convertAnyJSON(loader.data);
-				if (json.hasOwnProperty("_id"))
-				{
-					cacheData(loader.data, cacheTradeDir, json._id)
-				}
-				return null;
-			}
+			loadRequest(request, callback);
 		}
 		
 		/**
@@ -1494,7 +1363,7 @@ package connectivity
 			// --- REQUEST ------------------------------------------------------------------------
 			
 			// Get cached trade
-			var cachedTradeString:String = getCachedData(cacheTradeDir, tradeId);
+			var cachedTradeString:String = getCachedTrade(cacheTradeDir, tradeId);
 			var currVer:int;
 			var cachedTrade:Object;
 			if (cachedTradeString != null)
@@ -1527,7 +1396,7 @@ package connectivity
 				{
 					if (DEBUG) trace("Cache: New trade transmitted from server");
 					// Write trade to cache
-					cacheData(loader.data, cacheTradeDir, tradeId)
+					cacheTrade(loader.data, cacheTradeDir, tradeId)
 					return new Response(true, json);
 				}
 				// No trade attached, load cached trade	
@@ -1601,7 +1470,7 @@ package connectivity
 					for each (var trade:Object in json)
 					{
 						var tradeAsString:String = JSON.stringify(trade);
-						cacheData(tradeAsString, cacheTradeDir, trade._id)
+						cacheTrade(tradeAsString, cacheTradeDir, trade._id)
 					}
 					
 					// Get all cached trades for this user
@@ -1946,6 +1815,12 @@ package connectivity
 				if (DEBUG) trace("Cache: Found existing image for resourceId="+resourceId);
 			}
 			
+			// If image in content, 
+			//    use it
+			//    cache it
+			// If content blank,
+			//    use cached image
+			
 			// Create URL variables
 			var vars:URLVariables = new URLVariables();
 			if (md5 != null) vars.hash = md5;
@@ -2030,7 +1905,7 @@ package connectivity
 					usedCache = true;
 					convertToBitmap(bytes, onImageLoaded);
 				} 
-				// No cache: failure
+					// No cache: failure
 				else
 				{
 					response = new Response(false, convertAnyJSON(loader.data));

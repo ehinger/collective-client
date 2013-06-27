@@ -1,17 +1,257 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
 		xmlns:s="library://ns.adobe.com/flex/spark"
+		creationComplete="onCC()"
 		actionBarVisible="false" tabBarVisible="false" title="trades">
+	
+	<s:states>
+		<s:State name="State1"/>
+		<s:State name="negotiations"/>
+	</s:states>
+	
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
-		<s:Sequence id="grow" target="rec" duration="500">
-			<s:Resize heightTo="450"/>
-		</s:Sequence>
 	</fx:Declarations>
 	<fx:Script>
 		<![CDATA[
-			import spark.events.ViewNavigatorEvent;
+			import connectivity.*;
+			
+			import mx.events.FlexEvent;
 			import mx.graphics.IFill;
+			
+			import spark.components.Group;
+			import spark.components.Label;
+			import spark.components.TextInput;
+			import spark.events.ViewNavigatorEvent;
+			
+			protected var base:Image;
+			protected var menuBar:Image;
+			protected var bgPopup:Image;
+			protected var button1:Image;
+			protected var button2:Image;
+			protected var button3:Image;
+			protected var button4:Image;
+			protected var message:TextInput;
+			protected var newMessage:Image;
+			protected var profileImage:Image;
+			protected var messageBox:Label;
+			protected var barGroup:Group;
+			protected var cancel1:Image;
+			protected var userPic:Image;
+			protected var quoteBox:Image;
+			protected var quoteGroup:Group;
+			protected var info:String = new String;
+			protected var tradeId:String = new String;
+			protected var message1:String = new String;
+			protected var options:String;
+			protected var mainBar:Image = new Image;
+			protected var optobj:Object = new Object;
+			
+			
+			
+			protected function onCC():void {
+				ServerAccess.getTrades(showTrades);
+				this.setCurrentState("State1");
+			}
+			
+			protected function showTrades(response:Response):void {
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
+					
+					for each (var resource:Object in response.getData()) 
+					{
+						
+						this.base = new Image;
+						base.source="assets/itemtools.png";
+						base.width=320;
+						base.height=80;
+						base.x=-1;
+						base.y=85;
+						//base["resourceid"] = resource.id;
+						//trace("res id "+ resource._id);
+						base.addEventListener(MouseEvent.CLICK, toNegotiations);
+						base.name=resource._id;
+						wrapper.addElement(base);
+						tradeId = resource._id;
+						
+					}
+					
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+			}
+			
+			protected function toNegotiations(event:MouseEvent):void {
+				info = event.currentTarget.name;
+				ServerAccess.getTrade(info, recieveTrade);
+				this.setCurrentState("negotiations");
+				a.addEventListener(MouseEvent.CLICK, a_clickHandler);
+				usertext.removeAllElements();
+			}
+			
+			protected function recieveTrade(response:Response):void {
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
+					
+					optobj = response.getData();
+					options = optobj.owner.userId;
+					
+					for each (var resource:Object in response.getData().messages) 
+					{
+						this.messageBox = new Label;
+						this.userPic = new Image;
+						this.quoteBox = new Image;
+						this.quoteGroup = new Group;
+						if (resource.sender.userId == ServerAccess.getUserId()){
+							quoteBox.source="assets/textimage.png";
+							messageBox.x=110;
+						}
+						else {
+							quoteBox.source="assets/textimage1.png";
+							quoteBox.x=79;
+							messageBox.x=100;
+						}
+						messageBox.text=resource.message;
+						messageBox.y=5;
+						
+						messageBox.width=100;
+						quoteGroup.addElement(messageBox);
+						quoteGroup.addElement(quoteBox);
+						usertext.addElement(quoteGroup);
+					}
+					
+					for each (var actions:Object in response.getData().ownerActions)
+					{
+						if (actions.hasOwnProperty("accept")) {
+							//ServerAccess.actionTrade(info,ServerAccess., null);
+						}
+					}
+					
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+				
+			}
+			
+			protected function a_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+				this.bgPopup = new Image;
+				this.button1 = new Image;
+				this.button2 = new Image;
+				this.button3 = new Image;
+				this.button4 = new Image;
+				this.barGroup = new Group;
+				bgPopup.source="assets/menubase.png";
+				bgPopup.x=0;
+				bgPopup.width=320;
+				//bgPopup.i;
+				button1.source="assets/menucancel.png";
+				button1.y=365;
+				button1.addEventListener(MouseEvent.CLICK, cancelButton);
+				button2.source="assets/menufailed.png";
+				button2.y=315;
+				//button2.addEventListener(MouseEvent.CLICK, failed);
+				button3.source="assets/menucomplete.png";
+				button3.y=265;
+				button3.addEventListener(MouseEvent.CLICK, complete);
+				button4.source="assets/menuaddmessage.png";
+				button4.y=215;
+				button4.addEventListener(MouseEvent.CLICK, addMessage);
+				barGroup.height=400;
+				barGroup.addElement(bgPopup);
+				if (options == ServerAccess.getUserId()){
+					barGroup.addElement(button1);
+					barGroup.addElement(button2);
+					barGroup.addElement(button3);
+					barGroup.addElement(button4);				
+					bgPopup.y=175;
+				}
+				else {
+					barGroup.addElement(button4);
+					bgPopup.y=390;
+				}
+				this.addElement(barGroup);
+				a.removeEventListener(MouseEvent.CLICK, a_clickHandler);
+				a.addEventListener(MouseEvent.CLICK, onRemove);
+			}
+			
+			protected function cancelButton(event:MouseEvent):void {
+				ServerAccess.actionTrade(info,ServerAccess.ACTION_CANCEL,null);
+			}
+			
+			protected function complete(event:MouseEvent):void {
+				
+				ServerAccess.actionTrade(info,ServerAccess.ACTION_MARK_AS_COMPLETE,null);
+			}
+			
+			protected function onRemove(event:MouseEvent):void {
+				barGroup.removeAllElements();
+				a.removeEventListener(MouseEvent.CLICK, onRemove);
+				a.addEventListener(MouseEvent.CLICK, a_clickHandler);
+			}
+			
+			protected function addMessage(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				this.message = new TextInput;
+				this.newMessage = new Image;
+				this.cancel1 = new Image;
+				newMessage.source="assets/b1.png";
+				cancel1.source="assets/b2.png";
+				cancel1.x=120;
+				cancel1.y=335;
+				cancel1.width=100;
+				newMessage.y=335;
+				newMessage.x=10;
+				newMessage.width=100;
+				newMessage.addEventListener(MouseEvent.CLICK, addingMessage);
+				message.x=10;
+				message.y=225;
+				message.width=290;
+				message.height=125;
+				barGroup.removeElement(button1);
+				barGroup.removeElement(button2);
+				barGroup.removeElement(button3);
+				barGroup.removeElement(button4);
+				barGroup.addElement(message);
+				barGroup.addElement(newMessage);
+				barGroup.addElement(cancel1);
+			}
+			
+			protected function addingMessage(event:MouseEvent):void
+			{
+				this.messageBox = new Label;
+				this.userPic = new Image;
+				this.quoteBox = new Image;
+				this.quoteGroup = new Group;
+				quoteBox.source="assets/textimage.png";
+				messageBox.text=message.text;
+				message1=message.text;
+				messageBox.y=5;
+				messageBox.x=110;
+				messageBox.width=100;
+				quoteGroup.addElement(messageBox);
+				quoteGroup.addElement(quoteBox);
+				usertext.addElement(quoteGroup);
+				barGroup.removeElement(message);
+				barGroup.removeElement(newMessage);
+				barGroup.removeElement(cancel1);
+				barGroup.removeAllElements();
+				a.addEventListener(MouseEvent.CLICK, a_clickHandler);
+				a.removeEventListener(MouseEvent.CLICK, onRemove);
+				ServerAccess.addMessage(info,message1,null);
+				//				var something:Array = new Array("tools","land");
+			}
 			
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
@@ -28,7 +268,8 @@
 			protected function image3_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-
+				this.setCurrentState("State1");
+				barGroup.removeAllElements();
 			}
 			
 			protected function image4_clickHandler(event:MouseEvent):void
@@ -36,7 +277,6 @@
 				// TODO Auto-generated method stub
 				navigator.replaceView(Availible_items);
 			}
-
 			
 		]]>
 	</fx:Script>
@@ -50,7 +290,19 @@
 			 source="assets/Untitled-24.png" smooth="true"/>
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
-
 	
+	<s:Scroller x="0" y="80" width="320" height="355" includeIn="State1">
+		<s:VGroup id="wrapper" gap="0">
+		</s:VGroup>
+	</s:Scroller>
+
+	<s:Scroller x="0" y="85" width="320" height="335" includeIn="negotiations">
+		<s:VGroup id="usertext" gap="10">	
+		</s:VGroup>
+	</s:Scroller>
+	
+	
+	<s:Image id="b" x="11" y="322" width="299" height="97" alpha="0" source="assets/buttons.png" includeIn="negotiations"/>
+	<s:Image id="a" x="0" y="412" width="320" height="48" alpha="1" source="assets/menubutton.png" includeIn="negotiations"/>
 
 </s:View>

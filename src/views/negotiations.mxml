@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
 		xmlns:s="library://ns.adobe.com/flex/spark"
+		creationComplete="onCC()"
 		actionBarVisible="false" tabBarVisible="false" title="negotiations">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
@@ -10,6 +11,7 @@
 			import spark.components.Group;
 			import spark.components.Label;
 			import spark.components.TextInput;
+			import connectivity.*;
 			
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
@@ -51,6 +53,10 @@
 			protected var quoteBox:Image;
 			protected var quoteGroup:Group;
 			
+			protected function onCC():void {
+				a.addEventListener(MouseEvent.CLICK, a_clickHandler);
+			}
+			
 			protected function a_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
@@ -65,16 +71,16 @@
 				bgPopup.y=175;
 				bgPopup.width=320;
 				button1.source="assets/menucancel.png";
-				button1.y=375;
+				button1.y=365;
 				//button1.addEventListener(MouseEvent.CLICK, cancelButton);
 				button2.source="assets/menufailed.png";
-				button2.y=325;
+				button2.y=315;
 				//button2.addEventListener(MouseEvent.CLICK, failed);
 				button3.source="assets/menucomplete.png";
-				button3.y=275;
+				button3.y=265;
 				//button3.addEventListener(MouseEvent.CLICK, complete);
 				button4.source="assets/menuaddmessage.png";
-				button4.y=225;
+				button4.y=215;
 				button4.addEventListener(MouseEvent.CLICK, addMessage);
 				barGroup.height=400;
 				barGroup.addElement(bgPopup);
@@ -83,6 +89,14 @@
 				barGroup.addElement(button3);
 				barGroup.addElement(button4);
 				this.addElement(barGroup);
+				a.removeEventListener(MouseEvent.CLICK, a_clickHandler);
+				a.addEventListener(MouseEvent.CLICK, onRemove);
+			}
+			
+			protected function onRemove(event:MouseEvent):void {
+				barGroup.removeAllElements();
+				a.removeEventListener(MouseEvent.CLICK, onRemove);
+				a.addEventListener(MouseEvent.CLICK, a_clickHandler);
 			}
 			
 			protected function addMessage(event:MouseEvent):void
@@ -131,6 +145,8 @@
 				quoteGroup.addElement(quoteBox);
 				usertext.addElement(quoteGroup);
 				barGroup.removeAllElements();
+				a.addEventListener(MouseEvent.CLICK, a_clickHandler);
+				a.removeEventListener(MouseEvent.CLICK, onRemove);
 //				var something:Array = new Array("tools","land");
 			}
 			
@@ -146,16 +162,15 @@
 			 source="assets/Untitled-24.png" smooth="true"/>
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
-
-
-	<s:Image id="a" x="0" y="412" width="320" height="48" alpha="1" source="assets/menubutton.png" click="a_clickHandler(event)"/>
-	<s:Image id="b" x="11" y="322" width="299" height="97" alpha="0" source="assets/buttons.png"/>
-	<s:VGroup y="83" id="usertext" width="240">
-		
-	</s:VGroup>
 	
-	<s:VGroup y="80" id="othertext" width="240" x="80">
-		
-	</s:VGroup>
+	<s:Scroller x="0" y="85" width="320" height="335">
+		<s:VGroup id="usertext" gap="0">	
+		</s:VGroup>
+	</s:Scroller>
+
+	<s:Image id="a" x="0" y="412" width="320" height="48" alpha="1" source="assets/menubutton.png"/>
+	<s:Image id="b" x="11" y="322" width="299" height="97" alpha="0" source="assets/buttons.png"/>
+	
+
 
 </s:View>

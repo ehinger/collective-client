@@ -11,7 +11,7 @@
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-				navigator.replaceView(CollectiveHomeView);
+				navigator.replaceView(map);
 			}
 			
 			protected function image2_clickHandler(event:MouseEvent):void
@@ -35,7 +35,7 @@
 			protected function map_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-				map.y=102;
+				map1.y=102;
 				trade.y=346;
 				item.y=401;
 			}
@@ -43,7 +43,7 @@
 			protected function trade_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-				map.y=102;
+				map1.y=102;
 				trade.y=157;
 				item.y=401;
 			}
@@ -51,7 +51,7 @@
 			protected function item_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-				map.y=102;
+				map1.y=102;
 				trade.y=157;
 				item.y=202;
 			}
@@ -69,7 +69,7 @@
 			 source="assets/Untitled-24.png" smooth="true"/>
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
-	<s:Image id="map" x="0" y="102" width="319" height="252" source="assets/help.png" click="map_clickHandler(event)"/>
+	<s:Image id="map1" x="0" y="102" width="319" height="252" source="assets/help.png" click="map_clickHandler(event)"/>
 	<s:Image id="trade" x="0" y="346" width="319" height="252" source="assets/help.png" click="trade_clickHandler(event)"/>
 	<s:Image id="item" x="0" y="401" width="319" height="252" source="assets/help.png" click="item_clickHandler(event)"/>
 	

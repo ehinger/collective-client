@@ -32,6 +32,7 @@
 			import flash.events.MouseEvent;
 			import flash.filters.DropShadowFilter;
 			import flash.sampler.NewObjectSample;
+			import flash.sensors.Geolocation;
 			
 			import mx.controls.*;
 			import mx.events.FlexEvent;
@@ -51,9 +52,12 @@
 			protected var itemTitle:Label;
 			protected var value:Label;
 			protected var group:Group;
-			protected var source:String;
-			protected var type:String;
+			protected var source1:String;
+			protected var buttonSrc:String;
+			protected var type1:String;
 			protected var description:Label;
+			protected var geo:Geolocation = new Geolocation();
+			protected var center:LatLng;
 			
 			protected function onCC():void {
 				ServerAccess.getResources(ServerAccess.getUserId(), storedItems);
@@ -73,12 +77,39 @@
 						this.itemTitle = new Label;
 						itemTitle.text=resource.title;
 						itemTitle.y=7;
-						itemTitle.x=75;
-						button.source="assets/itembutton.png";
+						itemTitle.x=80;
+						button.source=buttonSrc;
 						button.x=245;
 						button.y=25;
 						button.addEventListener(MouseEvent.CLICK, detailButton);
-						base.source="assets/tools.png";
+						if (resource.type == "tools"){
+							base.source="assets/itemtools.png";
+							base.width=320;
+							base.height=80;
+							base.x=-1;
+							base.y=-1;
+						}
+						else if (resource.type == "land"){
+							base.source="assets/itemland.png";
+							base.width=320;
+							base.height=80;
+							base.x=-1;
+							base.y=-1;
+						}
+						else if (resource.type == "services"){
+							base.source="assets/itemservices.png";
+							base.width=320;
+							base.height=80;
+							base.x=-1;
+							base.y=-1;
+						}
+						else if (resource.type == "plants"){
+							base.source="assets/itemplants.png";
+							base.width=320;
+							base.height=80;
+							base.x=-1;
+							base.y=-1;
+						}
 						group.addElement(base);
 						group.addElement(button);
 						group.addElement(itemTitle);
@@ -139,24 +170,27 @@
 				this.description = new Label;
 				itemTitle.text=itemName.text;
 				itemTitle.y=7;
-				itemTitle.x=75;
+				itemTitle.x=80;
 				description.text=itemDescription.text;
 				value.text=itemValue.value + " pts";
 				value.y=7;
 				value.x=275;
-				button.source="assets/itembutton.png";
-				button.x=245;
-				button.y=25;
+				button.source=buttonSrc;
+				button.x=235;
+				button.y=28;
+				button.width=85;
+				button.height=50;
 				button.addEventListener(MouseEvent.CLICK, detailButton);
 				base.y=0;
-				base.source=source;
+				base.source=source1;
 				base.width=320;
+				base.height=80;
 				group.addElement(base);
 				group.addElement(button);
 				group.addElement(itemTitle);
 				group.addElement(value);
 				wrapper.addElement(group);
-				ServerAccess.addResource(type, r.lat, r.lng, itemName.text, itemDescription.text, itemValue.value, onResourceAdded);
+				ServerAccess.addResource(type1, r.lat, r.lng, itemName.text, itemDescription.text, itemValue.value, onResourceAdded);
 			}
 			
 			protected function onResourceAdded(response:Response):void {
@@ -184,8 +218,9 @@
 				land.selected=false;
 				plants.selected=false;
 				time.selected=false;
-				source="assets/tools.png";
-				type="tools";
+				buttonSrc="assets/itembutton.png";
+				source1="assets/itemtools.png";
+				type1="tools";
 			}
 			
 			protected function land_clickHandler(event:MouseEvent):void
@@ -195,7 +230,9 @@
 				tools.selected=false;
 				plants.selected=false;
 				time.selected=false;
-				source="assets/Untitled-2.jpg";
+				buttonSrc="assets/itembutton4.png";
+				source1="assets/itemland.png";
+				type1="land";
 			}
 			
 			protected function plants_clickHandler(event:MouseEvent):void
@@ -205,6 +242,9 @@
 				tools.selected=false;
 				land.selected=false;
 				time.selected=false;
+				buttonSrc="assets/itembutton2.png";
+				source1="assets/itemservices.png";
+				type1="services";
 			}
 			
 			protected function time_clickHandler(event:MouseEvent):void
@@ -214,6 +254,9 @@
 				tools.selected=false;
 				land.selected=false;
 				plants.selected=false;
+				buttonSrc="assets/itembutton3.png";
+				source1="assets/itemplants.png";
+				type1="plants";
 			}
 			
 			protected function image6_clickHandler(event:MouseEvent):void
@@ -232,8 +275,26 @@
 			{
 				// TODO Auto-generated method stub
 				this.setCurrentState("map");
-				this.map1.setCenter(new LatLng(-41.292304,174.783711));
+				if (Geolocation.isSupported) {
+					geo.addEventListener(GeolocationEvent.UPDATE, onUpdate);
+					this.addEventListener(ViewNavigatorEvent.REMOVING, onRemoval);
+					this.map1.setCenter(center);
+				}
+				else {
+					this.map1.setCenter(new LatLng(-41.292304,174.783711));
+				}
 				this.map1.addEventListener(MouseEvent.CLICK,onMapClick);
+			}
+			
+			protected function onUpdate(event:GeolocationEvent):void {
+				this.center = new LatLng;
+				center.lat = event.latitude;
+				center.lng = event.longitude;
+			}
+			
+			protected function onRemoval(event:ViewNavigatorEvent):void
+			{
+				geo.removeEventListener(GeolocationEvent.UPDATE, onUpdate);                
 			}
 			
 			protected function cancel_clickHandler(event:MouseEvent):void
@@ -263,9 +324,13 @@
 				 source="assets/Untitled-25.png" smooth="true"/>
 	</s:Group>
 	
-
-		<s:VGroup id="wrapper" gap="0" y="80" includeIn="State1">
+	<s:Scroller x="0" y="80" width="320" height="345" includeIn="State1">
+		<s:VGroup id="wrapper" gap="0">
 		</s:VGroup>
+	</s:Scroller>
+
+
+		
 
 	
 	<mq:TilemapComponent id="map1" includeIn="map" x="-1" y="-1" key="Fmjtd%7Cluub2g62l1%2C7s%3Do5-9ualu6" zoom="15" width="320" height="480"/>
@@ -274,20 +339,26 @@
 	<s:Label id="lblInfo" includeIn="map" x="5" y="362" width="310" height="45"
 			 color="#4C3319" fontSize="10" text="{this.strInfo}" textAlign="center"/>
 	<s:Image includeIn="map" x="-4" y="387" width="325" source="assets/mapcoord1.png" click="image5_clickHandler(event)"/>
-	<s:CheckBox id="tools" includeIn="details" x="22" y="156" click="tools_clickHandler(event)"/>
-	<s:CheckBox id="land" includeIn="details" x="103" y="154" click="land_clickHandler(event)"/>
-	<s:CheckBox id="plants" includeIn="details" x="182" y="153" click="plants_clickHandler(event)"/>
-	<s:CheckBox id="time" includeIn="details" x="255" y="154" click="time_clickHandler(event)"/>
+	<s:CheckBox id="tools" includeIn="details" x="21" y="145" click="tools_clickHandler(event)"/>
+	<s:CheckBox id="land" includeIn="details" x="100" y="145" click="land_clickHandler(event)"/>
+	<s:CheckBox id="plants" includeIn="details" x="180" y="145" click="plants_clickHandler(event)"/>
+	<s:CheckBox id="time" includeIn="details" x="262" y="146" click="time_clickHandler(event)"/>
 	<s:Image includeIn="State1" x="-1" y="405" width="322" source="assets/new.png" click="image6_clickHandler(event)"/>
-	<s:TextInput id="itemName" includeIn="details" x="140" y="91" width="152"/>
-	<s:TextInput id="itemDescription" includeIn="details" x="20" y="295" width="268" height="87" enabled="true"
-				 textAlign="left"/>
-	<s:HSlider id="itemValue" includeIn="details" x="21" y="227" width="281" maximum="5" minimum="1"
+	<s:TextInput id="itemName" includeIn="details" x="19" y="91" width="273" prompt="Title"/>
+	<s:TextInput id="itemDescription" includeIn="details" x="20" y="295" width="268" height="87"
+				 enabled="true" fontWeight="normal" prompt="Description" textAlign="left"/>
+	<s:HSlider id="itemValue" includeIn="details" x="17" y="227" width="281" maximum="5" minimum="1"
 			   value="1"/>
 	<s:Image id="next" includeIn="details" x="21" y="375" width="100" smooth="true"
 			 source="assets/b1.png" click="next_clickHandler(event)"/>
 	<s:Image id="cancel" includeIn="details" x="188" y="375" width="100" smooth="true"
 			 source="assets/b2.png" click="cancel_clickHandler(event)"/>
+	<s:Image includeIn="details" x="19" y="185" width="42" height="23" source="assets/addtools.png"/>
+	<s:Image includeIn="details" x="168" y="187" width="55" height="20"
+			 source="assets/addservices.png"/>
+	<s:Image includeIn="details" x="96" y="187" width="41" height="19" source="assets/addland.png"/>
+	<s:Image includeIn="details" x="251" y="187" width="43" height="20" source="assets/addplants.png"/>
+	<s:Image includeIn="details" x="116" y="252" width="74" height="28" source="assets/addpoints.png"/>
 	
 
 

@@ -10,7 +10,16 @@
 		<![CDATA[
 			import connectivity.*;
 			
+			import spark.components.Group;
+			import spark.components.Label;
 			import spark.events.ViewNavigatorEvent;
+			
+			protected var userName:Label = new Label;
+			protected var pts:Label = new Label;
+			protected var resource:String;
+			protected var p:String;
+			protected var resource1:Object = new Object;
+			protected var rgroup:Group;
 			
 			protected function onCC():void {
 				ServerAccess.getProfile(ServerAccess.getUserId(), profileInfo);
@@ -22,11 +31,23 @@
 					// Do successful operation stuffs.  use response.data to access returned data.
 					trace('success!  ' + response.getData());
 					
-					for each (var resource:Object in response.getData()) 
-					{
-						
-					}
+				this.resource = new String;
+				this.p = new String;
+				resource1 = response.getData();
+				resource = resource1.firstName + " " + resource1.lastName;
+				p = resource1.points;
+				pts.text = p;
+				userName.text=resource;
+				userName.y=90;
+				userName.x=80;
+				pts.y=158;
+				pts.x=137;
+				this.addElement(userName);
+				this.addElement(pts);	
+				for each (var review:Object in response.getData().reviews){
+					this.rgroup = new Group;
 					
+				}
 				}		
 				else
 				{
@@ -58,6 +79,12 @@
 				navigator.replaceView(Availible_items);
 			}
 						
+			protected function itemsButton_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(Availible_items);
+			}
+			
 		]]>
 	</fx:Script>
 
@@ -77,19 +104,17 @@
 			 source="assets/Untitled-24.png" smooth="true"/>
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
-	<s:Rect x="0" y="90" width="75" height="137">
+	<s:Rect x="0" y="84" width="75" height="145">
 		<s:fill>
-			<s:BitmapFill  source="assets/pic2.png"/>
+			<s:SolidColor color="#ffffff"/>
 		</s:fill>
 	</s:Rect>
 	<s:Scroller x="75" y="267" width="245" height="148">
-		<s:Group width="100%" height="100%">
-			<s:layout>
-				<s:VerticalLayout/>
-			</s:layout>
+		<s:VGroup id="wrapper">
 			
-		</s:Group>
+		</s:VGroup>
 	</s:Scroller>	
+	<s:Image id="itemsButton" x="75" y="183" width="169" height="49" source="assets/Profileitems.png" click="itemsButton_clickHandler(event)"/>
 
 
 	

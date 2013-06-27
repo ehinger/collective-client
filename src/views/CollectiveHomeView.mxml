@@ -3,52 +3,36 @@
 		xmlns:s="library://ns.adobe.com/flex/spark"
 		xmlns:mx="library://ns.adobe.com/flex/mx"
 		xmlns:mq="com.mapquest.tilemap.*"
-		creationComplete="onCC()"
 		actionBarVisible="false" tabBarVisible="false" title="HomeView" xmlns:mapquest="com.mapquest.*" >
 
 	<fx:Script>
 		<![CDATA[
 			import connectivity.Response;
-			import connectivity.ServerAccess;
-			
-			protected function onCC():void{
-				ServerAccess.register('Thomas','Creagh',12.3,12.4,
-					'2 pomare road, belmont', 
-					'Wellington', '5010','creaghthom@myvuw.ac.nz','llama',
-					onRegisterSuccess)
-					
-			}
-			
-			protected function onRegisterSuccess(response:Response):void {
-				if (response.isSuccess()) 
-				{
-					// Do successful operation stuffs.  use response.data to access returned data.
-					trace('success!  ' + response.getData().firstName + ': ' + response.getData());
-					
-				}		
-				else
-				{
-					trace('failed: ' + response.getData());
-				}
-			}		
+			import connectivity.ServerAccess;	
 			
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
-				ServerAccess.authenticate(username.text,password.text,logIn);
+				connectivity.ServerAccess.authenticate(username.text,password.text,logIn);
 			}
 			
 			protected function logIn(response:Response):void {
 				if (response.isSuccess()) 
 				{
 					// Do successful operation stuffs.  use response.data to access returned data.
-					trace('success!  ');
-					navigator.replaceView(negotiations);
+					trace('success!  ' + response.getData());
+					navigator.replaceView(map);
 					
 				}		
 				else
 				{
-					trace('failed: ');
+					trace('failed: ' + response.getData());
 				}
+			}
+			
+			protected function image10_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(registration);
 			}
 		]]>
 	</fx:Script>
@@ -61,7 +45,8 @@
 				 text="llamalovin@gmail.com" textAlign="center"/>
 	<s:TextInput id="password" x="84" y="300" width="156" height="39" displayAsPassword="true"
 				 prompt="Password" text="llama" textAlign="center"/>
-	<s:Image x="80" y="361" width="161" height="40" source="assets/login button.jpg" click="image1_clickHandler(event)"/>	
+	<s:Image x="83" y="349" width="75" height="61" source="assets/Untitled-53.jpg" click="image1_clickHandler(event)"/>	
+	<s:Image x="166" y="360" width="74" height="40" source="assets/Untitled-54.jpg" click="image10_clickHandler(event)"/>
 
 
 </s:View>

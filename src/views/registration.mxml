@@ -1,7 +1,120 @@
 <?xml version="1.0" encoding="utf-8"?>
-<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
-		xmlns:s="library://ns.adobe.com/flex/spark" title="registration">
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		actionBarVisible="false" title="registration">
 	<fx:Declarations>
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import connectivity.Response;
+			import connectivity.ServerAccess;
+			
+	
+
+			
+			protected function image1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(views.map);
+			}
+			
+			protected function image2_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(user);
+			}
+			
+			protected function image3_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(trades);
+			}
+			
+			protected function image4_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(Availible_items);
+			}
+			
+			protected function image11_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				ServerAccess.register(firstname.text,lastname.text,-41.292304,174.783711,streetaddress.text,city.text,zipcode.text,email.text,password.text, onRegister);
+			}
+			
+			protected function onRegister(response:Response):void{
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ');
+					connectivity.ServerAccess.authenticate(email.text,password.text,logIn);					
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+
+			}
+			
+			protected function logIn(response:Response):void{
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ');
+					navigator.replaceView(help);
+				}		
+				else
+				{
+					trace('failed: ');
+				}
+			}
+
+			
+			protected function image12_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				navigator.replaceView(CollectiveHomeView);
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	
+	
+	<s:Image x="-1" y="-233" width="323" smooth="true" source="assets/bg.png"/>
+	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
+	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
+			 source="assets/Untitled-2.png" smooth="true"/>
+	<s:Image x="80" y="0" width="74" height="76" click="image2_clickHandler(event)"
+			 source="assets/Untitled-23.png" smooth="true"/>
+	<s:Image x="155" y="-2" width="75" height="74" click="image3_clickHandler(event)"
+			 source="assets/Untitled-24.png" smooth="true"/>
+	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
+			 source="assets/Untitled-25.png" smooth="true"/>
+	
+	<s:Image id="register" x="0" y="80" width="322" height="75" source="assets/Untitled-34.png" />
+	<s:Image x="14" y="148" width="100" height="37" source="assets/Untitled-57.jpg"/>
+	<s:Image  x="10" y="188" width="135" height="89" source="assets/Untitled-59.jpg"/>
+	<s:Image  x="12" y="181" width="100" height="37" source="assets/Untitled-58.jpg"/>
+	<s:Image x="9" y="252" width="63" height="37" source="assets/Untitled-39.png"/>
+	<s:Image x="6" y="284" width="150" height="36" source="assets/Untitled-41.png"/>
+	<s:Image x="8" y="323" width="88" height="42" source="assets/Untitled-42.png"/>
+	
+	
+	
+	<s:Image id="a1" x="12" y="419" width="298" height="41" alpha="0" source="assets/menu bar options.jpg" />
+	<s:Image id="b" x="11" y="322" width="299" height="97" alpha="0" source="assets/buttons.png"/>
+	<s:TextInput id="firstname" x="133" y="152" width="177" height="25"/>
+	<s:TextInput id="lastname" x="133" y="184" width="177" height="27"/>
+	<s:TextInput id="streetaddress" x="165" y="217" width="145" height="28"/>
+	<s:TextInput id="city" x="80" y="254" width="230" height="27"/>
+	<s:TextInput id="zipcode" x="155" y="292" width="155" height="27"/>
+	<s:TextInput id="email" x="93" y="329" width="218" height="27"/>
+	<s:TextInput id="password" x="133" y="364" width="177" height="27"/>
+	<s:Image x="10" y="400" width="101" height="51" source="assets/Untitled-55.jpg" click="image11_clickHandler(event)" />
+	<s:Image x="209" y="400" width="101" height="51" source="assets/Untitled-56.jpg" click="image12_clickHandler(event)"/>
+	
 </s:View>

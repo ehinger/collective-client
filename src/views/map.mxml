@@ -7,7 +7,10 @@
 		creationComplete="onCC()"
 		xmlns:overlays="com.mapquest.tilemap.overlays.*" xmlns:pois="com.mapquest.tilemap.pois.*">
 	
-
+	<s:states>
+		<s:State name="State1"/>
+		<s:State name="item"/>
+	</s:states>
 	
 	<fx:Declarations>
 	</fx:Declarations>
@@ -25,18 +28,45 @@
 			
 			import flash.events.MouseEvent;
 			import flash.filters.DropShadowFilter;
-
+			import flash.sensors.Geolocation;
+			
 			import mx.controls.*;
 			
+			import spark.components.Label;
 			import spark.events.ViewNavigatorEvent;
 			
 			protected var myPoi:Poi;
 			protected var itemLocation:LatLng;
 			protected var itemPic:ImageMapIcon;
+			protected var geo:Geolocation = new Geolocation();
+			protected var center:LatLng;
+			protected var resource1:Object = new Object;
+			protected var p:Label;
+			protected var s:String;
+			protected var d:String = new String;
+			
 			
 			protected function onCC():void {
-				ServerAccess.getResources(ServerAccess.getUserId(), storedItems);
-				this.map1.setCenter(new LatLng(-41.292304,174.783711));
+				ServerAccess.getResourceLocations(-41.292304,174.783711,50,null,null,storedItems);
+				if (Geolocation.isSupported) {
+					geo.addEventListener(GeolocationEvent.UPDATE, onUpdate);
+					this.addEventListener(ViewNavigatorEvent.REMOVING, onRemoval);
+					this.map1.setCenter(center);
+				}
+				else {
+					this.map1.setCenter(new LatLng(-41.292304,174.783711));
+				}
+			}
+			
+			protected function onUpdate(event:GeolocationEvent):void {
+				this.center = new LatLng;
+				center.lat = event.latitude;
+				center.lng = event.longitude;
+			}
+			
+			protected function onRemoval(event:ViewNavigatorEvent):void
+			{
+				geo.removeEventListener(GeolocationEvent.UPDATE, onUpdate);                
 			}
 			
 			protected function storedItems(response:Response):void {
@@ -47,8 +77,18 @@
 					
 					for each (var resource:Object in response.getData()) 
 					{
+						d = resource._id;
 						this.itemPic = new ImageMapIcon();
 						if (resource.type == "tools") {
+							this.itemPic.setImageURL("assets/cir.png", height = 15, width = 15);
+						}
+						else if (resource.type == "services") {
+							this.itemPic.setImageURL("assets/cir.png", height = 15, width = 15);
+						}
+						else if (resource.type == "land") {
+							this.itemPic.setImageURL("assets/cir.png", height = 15, width = 15);
+						}
+						else if (resource.type == "plants") {
 							this.itemPic.setImageURL("assets/cir.png", height = 15, width = 15);
 						}
 						this.itemLocation = new LatLng;
@@ -56,10 +96,64 @@
 						itemLocation.lng = resource.location.lon;
 						this.myPoi = new Poi(itemLocation,itemPic);
 						this.myPoi.rolloverAndInfoTitleText = resource.title;
-						this.myPoi.infoContent = (resource.description);
+						this.myPoi.infoContent = resource._id;//(resource.description);
+						
+						this.myPoi.addEventListener(PoiEvent.INFOWINDOW_CLOSE, onIWEvent);
+						
 						this.map1.addShape(myPoi);
 					}
+					//map1.infoWindow.addEventListener(InfoWindowEvent.CLICKED_CLOSED,onIWEvent);
 					
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+			}
+			
+			protected function onIWEvent(event:PoiEvent):void{
+				d = event.poi.infoContent as String;
+				this.setCurrentState("item");
+				ServerAccess.getResource(d, getItem);	
+			}
+				
+			
+			protected function getItem(response:Response):void{
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
+					
+					resource1 = response.getData();
+					this.s = new String;
+					this.p = new Label;
+					p.x=0;
+					p.y=100;
+					if (resource1.hasOwnProperty("description"))
+						s = resource1.description;
+					else
+						trace("no description bro: "+resource1);
+					if (this.p == null)
+						trace("for some assed reason p is null");
+					this.p.text = s;
+					this.addElement(p);
+					p.addEventListener(MouseEvent.CLICK, onRequest);
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+			}
+			
+			protected function onRequest(event:MouseEvent):void {
+				ServerAccess.addTrade(d,newTrade);
+			}
+			
+			protected function newTrade(response:Response):void{
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
 				}		
 				else
 				{
@@ -78,7 +172,8 @@
 			{
 				// TODO Auto-generated method stub
 				this.map1.setCenter(new LatLng(-41.292304,174.783711));
-
+				this.setCurrentState("State1");
+				
 			}
 			
 			protected function image2_clickHandler(event:MouseEvent):void
@@ -111,7 +206,7 @@
 	
 	
 	
-	<mq:TilemapComponent id="map1" x="-1" y="-1" key="Fmjtd%7Cluub2g62l1%2C7s%3Do5-9ualu6" zoom="15" width="320" height="480"/>
+	<mq:TilemapComponent includeIn="State1" id="map1" x="-1" y="-1" key="Fmjtd%7Cluub2g62l1%2C7s%3Do5-9ualu6" zoom="15" width="320" height="480"/>
 	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
 	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
 			 source="assets/Untitled-2.png" smooth="true"/>
@@ -121,8 +216,6 @@
 			 source="assets/Untitled-24.png" smooth="true"/>
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
-	<s:Image id="qmark" x="272" y="397" smooth="false" source="assets/qmark.png" click="qmark_clickHandler(event)"/>
-
-
+	<s:Image includeIn="State1" id="qmark" x="272" y="397" smooth="false" source="assets/qmark.png" click="qmark_clickHandler(event)"/>
 
 </s:View>
