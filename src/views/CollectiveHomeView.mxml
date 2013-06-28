@@ -42,9 +42,9 @@
 	</fx:Declarations>
 	<s:Image x="0" y="-251" width="320" smooth="true" source="assets/bg2.png"/>
 	<s:TextInput id="username" x="83" y="244" width="158" height="39" prompt="Username"
-				 text="llamalovin@gmail.com" textAlign="center"/>
+				 textAlign="center"/>
 	<s:TextInput id="password" x="84" y="300" width="156" height="39" displayAsPassword="true"
-				 prompt="Password" text="llama" textAlign="center"/>
+				 prompt="Password" textAlign="center"/>
 	<s:Image x="83" y="349" width="75" height="61" source="assets/Untitled-53.jpg" click="image1_clickHandler(event)"/>	
 	<s:Image x="166" y="360" width="74" height="40" source="assets/Untitled-54.jpg" click="image10_clickHandler(event)"/>
 

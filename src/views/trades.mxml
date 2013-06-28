@@ -44,9 +44,16 @@
 			protected var tradeId:String = new String;
 			protected var message1:String = new String;
 			protected var options:String;
+			protected var options2:String;
 			protected var mainBar:Image = new Image;
 			protected var optobj:Object = new Object;
-			
+			protected var pass:Object = new Object;
+			protected var pass2:Object = new Object;
+			protected var pass3:Object = new Object;
+			protected var pass4:Object = new Object;
+			protected var get:String = new String;
+			protected var get2:String = new String;	
+			protected var gh:Label;
 			
 			
 			protected function onCC():void {
@@ -54,36 +61,6 @@
 				this.setCurrentState("State1");
 			}
 			
-			protected function showTrades(response:Response):void {
-				if (response.isSuccess()) 
-				{
-					// Do successful operation stuffs.  use response.data to access returned data.
-					trace('success!  ' + response.getData());
-					
-					for each (var resource:Object in response.getData()) 
-					{
-						
-						this.base = new Image;
-						base.source="assets/itemtools.png";
-						base.width=320;
-						base.height=80;
-						base.x=-1;
-						base.y=85;
-						//base["resourceid"] = resource.id;
-						//trace("res id "+ resource._id);
-						base.addEventListener(MouseEvent.CLICK, toNegotiations);
-						base.name=resource._id;
-						wrapper.addElement(base);
-						tradeId = resource._id;
-						
-					}
-					
-				}		
-				else
-				{
-					trace('failed: ' + response.getData());
-				}
-			}
 			
 			protected function toNegotiations(event:MouseEvent):void {
 				info = event.currentTarget.name;
@@ -101,7 +78,14 @@
 					
 					optobj = response.getData();
 					options = optobj.owner.userId;
-					
+					options2 = optobj.owner.userId;
+					pass = response.getData().owner.firstName;
+					pass2 = response.getData().owner.lastName;
+					pass3 = response.getData().borrower.firstName;
+					pass4 = response.getData().borrower.lastName;
+					get = pass + " " + pass2;
+					get2 = pass3 + " " + pass4;
+
 					for each (var resource:Object in response.getData().messages) 
 					{
 						this.messageBox = new Label;
@@ -141,6 +125,46 @@
 				
 			}
 			
+			protected function showTrades(response:Response):void {
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
+					
+					for each (var resource:Object in response.getData()) 
+					{
+						this.options2 = new String;
+						this.base = new Image;
+						this.gh = new Label;
+						if (options2 == ServerAccess.getUserId()){
+							base.source="assets/tradesowner.png";
+						}
+						else {
+							
+							base.source="assets/tradesborrower.png";
+							gh.text = get2;
+						}
+						base.width=320;
+						base.height=80;
+						base.x=-1;
+						base.y=85;
+						//base["resourceid"] = resource.id;
+						//trace("res id "+ resource._id);
+						base.addEventListener(MouseEvent.CLICK, toNegotiations);
+						base.name=resource._id;
+						//wrapper.addElement(gh);
+						wrapper.addElement(base);
+						tradeId = resource._id;
+						trace(resource.title);
+					}
+					
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+			}
+			
 			protected function a_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
@@ -178,7 +202,7 @@
 				}
 				else {
 					barGroup.addElement(button4);
-					bgPopup.y=390;
+					bgPopup.y=175;
 				}
 				this.addElement(barGroup);
 				a.removeEventListener(MouseEvent.CLICK, a_clickHandler);

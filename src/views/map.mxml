@@ -5,11 +5,12 @@
 		xmlns:mapquest="com.mapquest.*"
 		actionBarVisible="false" tabBarVisible="false" title="map" 
 		creationComplete="onCC()"
-		xmlns:overlays="com.mapquest.tilemap.overlays.*" xmlns:pois="com.mapquest.tilemap.pois.*">
+		xmlns:overlays="com.mapquest.tilemap.overlays.*" xmlns:pois="com.mapquest.tilemap.pois.*" viewActivate="view1_viewActivateHandler(event)">
 	
 	<s:states>
 		<s:State name="State1"/>
 		<s:State name="item"/>
+		<s:State name="profile"/>
 	</s:states>
 	
 	<fx:Declarations>
@@ -32,6 +33,7 @@
 			
 			import mx.controls.*;
 			
+			import spark.components.Group;
 			import spark.components.Label;
 			import spark.events.ViewNavigatorEvent;
 			
@@ -42,19 +44,36 @@
 			protected var center:LatLng;
 			protected var resource1:Object = new Object;
 			protected var p:Label;
+			[Bindable]
 			protected var s:String;
 			protected var d:String = new String;
+			protected var probutton:Image = new Image;
+			protected var reqbutton:Image = new Image;
+			[Bindable]
+			protected var itemtitle:String = new String;
+			protected var pId:String;
+			protected var resource4:Object;
+			protected var userName:Label = new Label;
+			protected var pts:Label = new Label;
+			protected var resource:String;
+			protected var p1:String;
+			protected var resource2:Object = new Object;
+			protected var rgroup:Group;
 			
+			protected function view1_viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				// TODO Auto-generated method stub
+				geo.addEventListener(GeolocationEvent.UPDATE, onUpdate);
+				this.addEventListener(ViewNavigatorEvent.REMOVING, onRemoval);
+			}
 			
 			protected function onCC():void {
-				ServerAccess.getResourceLocations(-41.292304,174.783711,50,null,null,storedItems);
+				ServerAccess.getResourceLocations(-41.292304,174.783711,100,null,null,storedItems);
 				if (Geolocation.isSupported) {
-					geo.addEventListener(GeolocationEvent.UPDATE, onUpdate);
-					this.addEventListener(ViewNavigatorEvent.REMOVING, onRemoval);
-					this.map1.setCenter(center);
+					this.map1.setCenter(new LatLng(-41.295399, 174.7756));
 				}
 				else {
-					this.map1.setCenter(new LatLng(-41.292304,174.783711));
+					this.map1.setCenter(new LatLng(-41.295399, 174.7756));
 				}
 			}
 			
@@ -77,25 +96,26 @@
 					
 					for each (var resource:Object in response.getData()) 
 					{
+						
 						d = resource._id;
 						this.itemPic = new ImageMapIcon();
 						if (resource.type == "tools") {
-							this.itemPic.setImageURL("assets/cir.png", height = 15, width = 15);
+							this.itemPic.setImageURL("assets/maptool.png", height = 40, width = 40);
 						}
 						else if (resource.type == "services") {
-							this.itemPic.setImageURL("assets/cir.png", height = 15, width = 15);
+							this.itemPic.setImageURL("assets/mapservices.png", height = 40, width = 40);
 						}
 						else if (resource.type == "land") {
-							this.itemPic.setImageURL("assets/cir.png", height = 15, width = 15);
+							this.itemPic.setImageURL("assets/mapland.png", height = 40, width = 30);
 						}
 						else if (resource.type == "plants") {
-							this.itemPic.setImageURL("assets/cir.png", height = 15, width = 15);
+							this.itemPic.setImageURL("assets/mapplants.png", height = 25, width = 40);
 						}
 						this.itemLocation = new LatLng;
 						itemLocation.lat = resource.location.lat;
 						itemLocation.lng = resource.location.lon;
 						this.myPoi = new Poi(itemLocation,itemPic);
-						this.myPoi.rolloverAndInfoTitleText = resource.title;
+						this.myPoi.rolloverAndInfoTitleText = resource.type;
 						this.myPoi.infoContent = resource._id;//(resource.description);
 						
 						this.myPoi.addEventListener(PoiEvent.INFOWINDOW_CLOSE, onIWEvent);
@@ -123,12 +143,24 @@
 				{
 					// Do successful operation stuffs.  use response.data to access returned data.
 					trace('success!  ' + response.getData());
-					
+					this.resource4 = new Object;
+					resource4 = response.getData();
+					this.pId = new String;
+					pId = resource4.owner;
 					resource1 = response.getData();
 					this.s = new String;
 					this.p = new Label;
-					p.x=0;
-					p.y=100;
+					p.x=25;
+					p.y=150;
+					itemtitle = resource1.title;
+					probutton.source = "assets/detailowner.png";
+					reqbutton.source = "assets/detailrequest.png";
+					probutton.x = 20;
+					probutton.y = 350;
+					reqbutton.x = 175;
+					reqbutton.y = 350;
+					//itemtitle.x=25;
+					//itemtitle.y=100;
 					if (resource1.hasOwnProperty("description"))
 						s = resource1.description;
 					else
@@ -136,8 +168,47 @@
 					if (this.p == null)
 						trace("for some assed reason p is null");
 					this.p.text = s;
-					this.addElement(p);
-					p.addEventListener(MouseEvent.CLICK, onRequest);
+					this.addElement(reqbutton);
+					this.addElement(probutton);
+					reqbutton.addEventListener(MouseEvent.CLICK, onRequest);
+					probutton.addEventListener(MouseEvent.CLICK, viewProfile);
+				}		
+				else
+				{
+					trace('failed: ' + response.getData());
+				}
+			}
+			
+			protected function viewProfile(event:MouseEvent):void {
+				this.setCurrentState("profile");
+				ServerAccess.getProfile(pId, addProfile);
+				this.removeElement(reqbutton);
+				this.removeElement(probutton);
+			}
+			
+			protected function addProfile(response:Response):void{
+				if (response.isSuccess()) 
+				{
+					// Do successful operation stuffs.  use response.data to access returned data.
+					trace('success!  ' + response.getData());
+					
+					this.resource = new String;
+					this.p1 = new String;
+					resource2 = response.getData();
+					resource = resource2.firstName + " " + resource2.lastName;
+					p1 = resource2.points;
+					pts.text = p1;
+					userName.text=resource;
+					userName.y=90;
+					userName.x=80;
+					pts.y=158;
+					pts.x=137;	
+					for each (var review:Object in response.getData().reviews){
+						this.rgroup = new Group;
+						
+					}
+					this.addElement(userName);
+					this.addElement(pts);
 				}		
 				else
 				{
@@ -171,9 +242,12 @@
 			protected function image1_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub
-				this.map1.setCenter(new LatLng(-41.292304,174.783711));
+				this.map1.setCenter(new LatLng(-41.295399, 174.7756));
 				this.setCurrentState("State1");
-				
+				this.removeElement(reqbutton);
+				this.removeElement(probutton);
+				this.removeElement(userName);
+				this.removeElement(pts);
 			}
 			
 			protected function image2_clickHandler(event:MouseEvent):void
@@ -200,13 +274,22 @@
 				// TODO Auto-generated method stub
 				navigator.replaceView(help);
 			}
+			
+			
+			
 		]]>
 	</fx:Script>
 	
 	
-	
+	<s:Image includeIn="item, profile" x="0" y="-240" width="320" source="assets/bg.png"/>
 	
 	<mq:TilemapComponent includeIn="State1" id="map1" x="-1" y="-1" key="Fmjtd%7Cluub2g62l1%2C7s%3Do5-9ualu6" zoom="15" width="320" height="480"/>
+	<s:Rect x="0" y="82" width="75" height="145" includeIn="profile">
+		<s:fill>
+			<s:BitmapFill source="assets/man.png"/>
+		</s:fill>
+	</s:Rect>
+	<s:Image x="0" width="320" height="480" source="assets/bg3.png" includeIn="profile"/>
 	<s:Image x="-1" y="-4" width="321" height="90" source="assets/Untitled-2.jpg"/>
 	<s:Image x="1" y="0" width="77" height="76" click="image1_clickHandler(event)"
 			 source="assets/Untitled-2.png" smooth="true"/>
@@ -217,5 +300,22 @@
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
 	<s:Image includeIn="State1" id="qmark" x="272" y="397" smooth="false" source="assets/qmark.png" click="qmark_clickHandler(event)"/>
+	<s:Label includeIn="item" x="20" y="100" fontFamily="_sans" fontSize="36" text="{itemtitle}"
+			 verticalAlign="top"/>
+	<s:Label includeIn="item" x="20" y="163" fontSize="22" fontStyle="normal" fontWeight="normal"
+			 text="{s}" textDecoration="none"/>
+	<s:Rect width.item="320" height.item="1" x.item="-1" y.item="147">
+		<s:fill.item>
+			<s:SolidColor color.item="#000000"/>
+		</s:fill.item>
+	</s:Rect>
+	<s:Rect x="0" y="82" width="75" height="145" includeIn="profile">
+		<s:fill>
+			<s:BitmapFill source="assets/man.png"/>
+		</s:fill>
+	</s:Rect>
 
+	<s:Image id="itemsButton" x="75" y="183" width="169" height="49" source="assets/Profileitems.png" includeIn="profile"/>
+	
+	
 </s:View>

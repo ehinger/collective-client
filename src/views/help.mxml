@@ -70,7 +70,7 @@
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
 	<s:Image id="map1" x="0" y="102" width="319" height="252" source="assets/help.png" click="map_clickHandler(event)"/>
-	<s:Image id="trade" x="0" y="346" width="319" height="252" source="assets/help.png" click="trade_clickHandler(event)"/>
-	<s:Image id="item" x="0" y="401" width="319" height="252" source="assets/help.png" click="item_clickHandler(event)"/>
+	<s:Image id="trade" x="0" y="346" width="319" height="252" source="assets/helpt.png" click="trade_clickHandler(event)"/>
+	<s:Image id="item" x="0" y="401" width="319" height="252" source="assets/helpi.png" click="item_clickHandler(event)"/>
 	
 </s:View>

@@ -104,9 +104,9 @@
 			 source="assets/Untitled-24.png" smooth="true"/>
 	<s:Image x="239" y="-2" width="68" height="77" click="image4_clickHandler(event)"
 			 source="assets/Untitled-25.png" smooth="true"/>
-	<s:Rect x="0" y="84" width="75" height="145">
+	<s:Rect x="0" y="82" width="75" height="145">
 		<s:fill>
-			<s:SolidColor color="#ffffff"/>
+			<s:BitmapFill source="assets/man.png"/>
 		</s:fill>
 	</s:Rect>
 	<s:Scroller x="75" y="267" width="245" height="148">

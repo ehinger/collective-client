@@ -58,6 +58,7 @@
 			protected var description:Label;
 			protected var geo:Geolocation = new Geolocation();
 			protected var center:LatLng;
+			protected var name1:Label;
 			
 			protected function onCC():void {
 				ServerAccess.getResources(ServerAccess.getUserId(), storedItems);
@@ -75,15 +76,24 @@
 						this.group = new Group;
 						this.button = new Image;
 						this.itemTitle = new Label;
+						this.value = new Label;
+						this.name1 = new Label;
+						
 						itemTitle.text=resource.title;
 						itemTitle.y=7;
 						itemTitle.x=80;
-						button.source=buttonSrc;
-						button.x=245;
-						button.y=25;
+						value.text=resource.points + " pts";
+						value.y=7;
+						value.x=275;
+						button.width=85;
+						button.height=50;
+						//name.text=resource.
+						button.x=235;
+						button.y=28;
 						button.addEventListener(MouseEvent.CLICK, detailButton);
 						if (resource.type == "tools"){
 							base.source="assets/itemtools.png";
+							button.source="assets/itembutton.png";
 							base.width=320;
 							base.height=80;
 							base.x=-1;
@@ -91,6 +101,7 @@
 						}
 						else if (resource.type == "land"){
 							base.source="assets/itemland.png";
+							button.source="assets/itembutton4.png";
 							base.width=320;
 							base.height=80;
 							base.x=-1;
@@ -98,6 +109,7 @@
 						}
 						else if (resource.type == "services"){
 							base.source="assets/itemservices.png";
+							button.source="assets/itembutton2.png";
 							base.width=320;
 							base.height=80;
 							base.x=-1;
@@ -105,6 +117,7 @@
 						}
 						else if (resource.type == "plants"){
 							base.source="assets/itemplants.png";
+							button.source="assets/itembutton3.png";
 							base.width=320;
 							base.height=80;
 							base.x=-1;
@@ -113,6 +126,7 @@
 						group.addElement(base);
 						group.addElement(button);
 						group.addElement(itemTitle);
+						group.addElement(value);
 						wrapper.addElement(group);
 					}
 					
@@ -154,7 +168,7 @@
 			protected function image4_clickHandler(event:MouseEvent):void
 			{
 				// TODO Auto-generated method stub			
-				
+				this.setCurrentState("State1");
 			}
 			
 			
@@ -281,7 +295,7 @@
 					this.map1.setCenter(center);
 				}
 				else {
-					this.map1.setCenter(new LatLng(-41.292304,174.783711));
+					this.map1.setCenter(new LatLng(-41.295399, 174.7756));
 				}
 				this.map1.addEventListener(MouseEvent.CLICK,onMapClick);
 			}
